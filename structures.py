@@ -6,6 +6,7 @@ are given as a list of ASE atoms objects.
 """
 
 import random
+import numpy as np
 
 class Structures:
 
@@ -85,8 +86,10 @@ class Structures:
 
         unique_structures = self.structures[0] #for testing purposes
 
-        if replace_structures: self.structures = unique_structures
-        else: return unique_structures
+        if replace_structures:
+            self.structures = unique_structures
+        else:
+            return unique_structures
 
     def create_datasets(self, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
         """ Separates the structures into training, validation and test sets.
@@ -96,6 +99,9 @@ class Structures:
 
         if training_percent + validation_percent + test_percent != 1.0:
             raise ValueError("Percentages do not add up to 1.0")
+
+        if not self.structures:
+            raise ValueError("No structures to create datasets from.")
 
         structures = self.structures.copy()
 
@@ -110,3 +116,25 @@ class Structures:
         self.training_set = structures[:num_train]
         self.validation_set = structures[num_train:num_train+num_val]
         self.test_set = structures[num_train+num_val:]
+
+    def get_energy_and_forces(self, structures=None):
+        """
+        Read the energies and forces for a set of structures.
+
+        If the optional argument `structures` is not provided, use the Structures object's own `structures` attribute.
+        """
+
+        structures = structures or self.structures
+
+        energies = []
+        forces = []
+
+        for structure in structures:
+            energy = structure.get_potential_energy()
+            force = structure.get_forces()
+
+            energies.append(energy)
+            forces.append(force)
+
+        return np.array(energies), np.array(forces)
+
