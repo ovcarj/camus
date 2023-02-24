@@ -26,7 +26,7 @@ class Structures:
         self._structures = structures or []
         self._training_set = training_set or []
         self._validation_set = validation_set or []
-        self.test = test_set or []
+        self._test_set = test_set or []
 
     @property
     def structures(self):
@@ -46,7 +46,7 @@ class Structures:
 
     @training_set.setter
     def training_set(self, new_structures):
-        self._training = new_structures
+        self._training_set = new_structures
 
     @training_set.deleter
     def training_set(self):
@@ -58,7 +58,7 @@ class Structures:
 
     @validation_set.setter
     def validation_set(self, new_structures):
-        self._validation = new_structures
+        self._validation_set = new_structures
 
     @validation_set.deleter
     def validation_set(self):
@@ -70,7 +70,7 @@ class Structures:
 
     @test_set.setter
     def test_set(self, new_structures):
-        self._test = new_structures
+        self._test_set = new_structures
 
     @test_set.deleter
     def test_set(self):
@@ -107,6 +107,6 @@ class Structures:
         num_val = int(num_structures * validation_percent)
         num_test = num_structures - num_train - num_val
 
-        self.training = structures[:num_train]
-        self.validation = structures[num_train:num_train+num_val]
-        self.test = structures[num_train+num_val:]
+        self.training_set = structures[:num_train]
+        self.validation_set = structures[num_train:num_train+num_val]
+        self.test_set = structures[num_train+num_val:]
