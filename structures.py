@@ -15,12 +15,12 @@ class Structures:
         Initializes a new Structures object with a list of structures and optional training, validation and test sets.
 
         Parameters:
-            structures (list of ASE Atoms objects): List of structures to be stored in the Structures object.
-            training (list of ASE Atoms objects): List of structures to be used as the training set.
+            structures (list of ASE Atoms objects): A general list of structures to be stored in the Structures object.
+            training_set (list of ASE Atoms objects): List of structures to be used as the training set.
                 Defaults to an empty list.
-            validation (list of ASE Atoms objects): List of structures to be used as the validation set.
+            validation_set (list of ASE Atoms objects): List of structures to be used as the validation set.
                 Defaults to an empty list.
-            test (list of ASE Atoms objects): List of structures to be used as the test set.
+            test_set (list of ASE Atoms objects): List of structures to be used as the test set.
                 Defaults to an empty list.
         """
 
@@ -117,14 +117,14 @@ class Structures:
         self.validation_set = structures[num_train:num_train+num_val]
         self.test_set = structures[num_train+num_val:]
 
-    def get_energy_and_forces(self, structures=None):
+    def get_energies_and_forces(self, input_structures=None):
         """
         Read the energies and forces for a set of structures.
 
         If the optional argument `structures` is not provided, use the Structures object's own `structures` attribute.
         """
 
-        structures = structures or self.structures
+        structures = input_structures or self.structures
 
         energies = []
         forces = []
