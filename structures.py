@@ -10,7 +10,7 @@ import numpy as np
 
 class Structures:
 
-    def __init__(self, structures=None, training_set=None, validation_set=None, test_set=None):
+    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[]):
         """
         Initializes a new Structures object with a list of structures and optional training, validation and test sets.
 
@@ -24,10 +24,10 @@ class Structures:
                 Defaults to an empty list.
         """
 
-        self._structures = structures or []
-        self._training_set = training_set or []
-        self._validation_set = validation_set or []
-        self._test_set = test_set or []
+        self._structures = structures
+        self._training_set = training_set
+        self._validation_set = validation_set
+        self._test_set = test_set
 
     @property
     def structures(self):
@@ -101,7 +101,7 @@ class Structures:
         if training_percent + validation_percent + test_percent != 1.0:
             raise ValueError("Percentages do not add up to 1.0")
 
-        if not self.structures:
+        if len(self.structures) == 0:
             raise ValueError("No structures to create datasets from.")
 
         structures = self.structures.copy()
