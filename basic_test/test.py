@@ -11,6 +11,11 @@ camus_object.Cstructures.create_datasets()
 
 print(f'Created ML datasets. {len(camus_object.Cstructures.test_set)} structures are in the test set.')
 
+camus_object.Cstructures.create_artn_set()
+
+print(f'Created ARTn set randomly. {len(camus_object.Cstructures.artn_set)} structures are in the ARTn set.')
+
+
 empty = camus.Camus(structs)
 
 print(f'Created camus object without any structures.')

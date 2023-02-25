@@ -92,13 +92,11 @@ class Structures:
     def artn_set(self):
         del self._artn_set
 
-
-    @staticmethod
     def find_unique_structures(self, replace_structures=False):
-        """Find a set of unique structures by some criterium (to be defined)
+        """ Find a set of unique structures by some criterium (to be defined)
 
         If replace_structures=True, replace the current structures in the Camus object with the unique ones.
-        Otherwise, return a set of unique structures and can be used as a static method.
+        Otherwise, return a set of unique structures.
         """
 
         unique_structures = self.structures[0] #for testing purposes
@@ -134,12 +132,36 @@ class Structures:
         self.validation_set = structures[num_train:num_train+num_val]
         self.test_set = structures[num_train+num_val:]
 
+    def create_artn_set(self, input_structures=None, mode='random', indices=None, number_of_structures=100):
+        """ Creates a `number_of_structures` of structures to be used as input structures for ARTn searches.
+
+        If the optional list of `input_structures` is not provided, use the Structures object's own `structures` 
+        attribute as the base set from which to create the structures.
+
+        If `mode='random'`, randomly select `number_of_structures` from the base set.
+        If `mode='indices'`, select structures indexed by `indices` from the base set.
+        """
+
+        if input_structures is None:
+            base_set = self.structures
+        else:
+            base_set = input_structures
+
+        if mode == 'random':
+            self.artn_set = random.sample(base_set, number_of_structures)
+
+        elif mode == 'indices':
+            self.artn_set = [base_set[i] for i in indices]
+
+        else:
+            raise ValueError("Unsupported mode. Choose 'random' or 'indices'.")
+        
     @staticmethod
     def get_energies_and_forces(self, input_structures=None):
-        """
-        Read the energies and forces for a set of structures.
+        """ Read the energies and forces for a set of structures.
 
-        If the optional argument `structures` is not provided, use the Structures object's own `structures` attribute.
+        If the optional argument `structures` is not provided, 
+        use the Structures object's own `structures` attribute.
         """
 
         if not input_structures: 
