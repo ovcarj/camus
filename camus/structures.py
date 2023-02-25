@@ -142,7 +142,10 @@ class Structures:
         If the optional argument `structures` is not provided, use the Structures object's own `structures` attribute.
         """
 
-        structures = input_structures or self.structures
+        if not input_structures: 
+            structures = self.structures
+        else: 
+            structures = input_structures
 
         energies = []
         forces = []
