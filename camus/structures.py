@@ -7,6 +7,8 @@ are given as a list of ASE atoms objects.
 
 import random
 import numpy as np
+import os
+from ase.io import write
 
 class Structures:
 
@@ -156,7 +158,6 @@ class Structures:
         else:
             raise ValueError("Unsupported mode. Choose 'random' or 'indices'.")
         
-    @staticmethod
     def get_energies_and_forces(self, input_structures=None):
         """ Read the energies and forces for a set of structures.
 
@@ -180,4 +181,31 @@ class Structures:
             forces.append(force)
 
         return np.array(energies), np.array(forces)
+
+    def write_lammps_data(self, target_directory=None, input_structures=None, prefixes='auto'):
+        """ Creates LAMMPS data files from a list of ASE Atoms objects in a target directory.
+
+        If `input_structures` is not given, self.structures are used.
+        If `target_directory` is not given, CAMUS_LAMMPS_DATA_DIR environment variable is used.
+        If `prefix='auto'`, a list of integers [1_, 2_, ...] will be used as prefixes of the file names.
+        Otherwise, a list of prefixes should be given.
+        """
+        if input_structures is None:
+            input_structures = self.structures
+        if target_directory is None:
+            target_directory = os.getenv('CAMUS_LAMMPS_DATA_DIR')
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Write LAMMPS data files
+        for i, structure in enumerate(input_structures):
+            if prefixes == 'auto':
+                prefix = str(i+1)
+            else:
+                prefix = str(prefixes[i])
+
+            file_name = os.path.join(target_directory, f'{prefix}_lammps.data')
+            write(file_name, structure, format='lammps-data')
 

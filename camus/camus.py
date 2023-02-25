@@ -5,12 +5,13 @@ It should be able to let several other classes to communicate with each other.
 Planned classes: Structures, ML, ARTn, DFT
 
 """
-
+import os
 from camus.structures import Structures
 
 class Camus:
 
     def __init__(self, structures=None, *args, **kwargs):
         self.Cstructures = Structures(structures)
+
 
 
