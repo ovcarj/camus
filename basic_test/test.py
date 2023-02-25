@@ -17,6 +17,6 @@ print(f'Created camus object without any structures.')
 
 empty.Cstructures.structures = structs
 
-print(f'Added {len(empty.Cstructures.structures)} to the empty camus object.')
+print(f'Added {len(empty.Cstructures.structures)} structures to the empty camus object.')
 
 print('Test OK')
