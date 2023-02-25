@@ -229,8 +229,8 @@ class Structures:
                     if line.strip() == 'Atoms':
                         lines.insert(i, 'Masses\n\n')
                         for j, spec in enumerate(specorder):
-                            lines.insert(i+j+1, f'{j+1} {masses[j]} # {spec}\n')
-                        lines.insert(i+j+2, '\n')    
+                            lines.insert(i+j+1, f'{j+1} {masses[j]}  {spec}')
+                        #    lines.insert(i, '5n')
                         break
 
                 with open(file_name, 'w') as f:
