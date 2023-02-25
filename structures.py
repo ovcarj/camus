@@ -76,12 +76,13 @@ class Structures:
     @test_set.deleter
     def test_set(self):
         del self._test_set
-
+    
+    @staticmethod
     def find_unique_structures(self, replace_structures=False):
         """Find a set of unique structures by some criterium (to be defined)
 
         If replace_structures=True, replace the current structures in the Camus object with the unique ones.
-        Otherwise, return a set of unique structures.
+        Otherwise, return a set of unique structures and can be used as a static method.
         """
 
         unique_structures = self.structures[0] #for testing purposes
