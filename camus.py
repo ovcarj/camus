@@ -2,7 +2,7 @@
 
 This module defines the central object in the CAMUS algorithm.
 It should be able to let several other classes to communicate with each other.
-Planned classes: Structures, ML, artN, DFT
+Planned classes: Structures, ML, ARTn, DFT
 
 """
 

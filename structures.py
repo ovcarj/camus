@@ -10,7 +10,7 @@ import numpy as np
 
 class Structures:
 
-    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[]):
+    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], artn_set=[]):
         """
         Initializes a new Structures object with a list of structures and optional training, validation and test sets.
 
@@ -22,12 +22,15 @@ class Structures:
                 Defaults to an empty list.
             test_set (list of ASE Atoms objects): List of structures to be used as the test set.
                 Defaults to an empty list.
+            artn_set (list of ASE Atoms objects): List of structures to be used as input structures for ARTn searches.
+                Defaults to an empty list.
         """
 
         self._structures = structures
         self._training_set = training_set
         self._validation_set = validation_set
         self._test_set = test_set
+        self._artn_set = artn_set
 
     @property
     def structures(self):
@@ -77,6 +80,19 @@ class Structures:
     def test_set(self):
         del self._test_set
     
+    @property
+    def artn_set(self):
+        return self._artn_set
+
+    @artn_set.setter
+    def artn_set(self, new_structures):
+        self._artn_set = new_structures
+
+    @artn_set.deleter
+    def artn_set(self):
+        del self._artn_set
+
+
     @staticmethod
     def find_unique_structures(self, replace_structures=False):
         """Find a set of unique structures by some criterium (to be defined)
@@ -118,6 +134,7 @@ class Structures:
         self.validation_set = structures[num_train:num_train+num_val]
         self.test_set = structures[num_train+num_val:]
 
+    @staticmethod
     def get_energies_and_forces(self, input_structures=None):
         """
         Read the energies and forces for a set of structures.
