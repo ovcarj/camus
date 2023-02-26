@@ -3,7 +3,7 @@ from camus import camus
 
 structs = read('test.traj', index='0:100')
 
-camus_object = camus.Camus(structs)
+camus_object = camus.Camus(structures=structs, artn_outputs=[])
 
 print(f'Read {len(camus_object.Cstructures.structures)} structures into a camus.Cstructures object.')
 
