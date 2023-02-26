@@ -69,7 +69,7 @@ class ARTn:
             'engine_units': '\'lammps/metal\'',    
             'verbose': '2',
             'zseed': None,       
-            'lrestart': '.true.',
+            'lrestart': '.false.',
             'ninit': '2',         
             'lpush_final': '.true.',
             'nsmooth': '2',
