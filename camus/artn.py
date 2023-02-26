@@ -29,4 +29,18 @@ class ARTn:
     def artn_outputs(self):
         del self._artn_outputs
 
+    def write_artn_in(self):
+        """ Method that writes a standard artn.in file to a `target directory`. 
+        If a `target directory` is not specified, CAMUS_ARTN_DATA_DIR environment variable is used.
+
+        Parameters:
+            parameter: parameter description 
+ 
+        """
+
+        # Set the default target directory to CAMUS_ARTN_DATA_DIR environment variable
+        if target_dir is None:
+            target_dir = os.environ.get('CAMUS_ARTN_DATA_DIR')
+            if target_dir is None:
+                raise ValueError("Target directory not specified and CAMUS_ARTN_DATA_DIR environment variable is not set.")
 

@@ -8,3 +8,7 @@ echo 'export PYTHONPATH='$WD':$PYTHONPATH' >> ~/.bashrc
 
 # Define default LAMMPS data target directory
 echo 'export CAMUS_LAMMPS_DATA_DIR=~/.CAMUS/LAMMPS_data' >> ~/.bashrc
+
+# Define default ARTn data target directory
+echo 'export CAMUS_ARTN_DATA_DIR=~/.CAMUS/ARTn_data' >> ~/.bashrc
+
