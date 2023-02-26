@@ -67,7 +67,7 @@ class ARTn:
 
         default_parameters= {
             'engine_units': '\'lammps/metal\'',    
-            'verbose': '2',
+            'verbose': '0',
             'zseed': None,       
             'lrestart': '.false.',
             'ninit': '2',         
