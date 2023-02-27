@@ -8,6 +8,7 @@ are given as a list of ASE atoms objects.
 import random
 import numpy as np
 import os
+from ase import Atoms
 from ase.io import write
 
 class Structures:
@@ -201,12 +202,19 @@ class Structures:
         if not os.path.exists(target_directory):
             os.makedirs(target_directory)
 
+
+        # Special case of single input structure:
+        if isinstance(input_structures, Atoms): input_structures = [input_structures]
+
         # Write LAMMPS data files
         for i, structure in enumerate(input_structures):
             if prefixes == 'auto':
                 prefix = str(i) + '_'
             else:
-                prefix = str(prefixes[i])
+                if isinstance(prefixes, list):
+                    prefix = str(prefixes[i])
+                elif isinstance(prefixes, str):
+                    prefix = prefixes
 
             file_name = os.path.join(target_directory, f'{prefix}lammps.data')
             write(file_name, structure, format='lammps-data', specorder=specorder)
