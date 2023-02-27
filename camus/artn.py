@@ -83,7 +83,7 @@ class ARTn:
         If self._artn_parameters is an empty dictionary, it will be automatically generated.
 
         Parameters:
-            parameter: parameter description placeholder
+            target_directory: directory in which to write the artn.in file
 
         """
 
