@@ -81,7 +81,7 @@ class Structures:
     @test_set.deleter
     def test_set(self):
         del self._test_set
-    
+
     @property
     def artn_set(self):
         return self._artn_set
@@ -157,7 +157,7 @@ class Structures:
 
         else:
             raise ValueError("Unsupported mode. Choose 'random' or 'indices'.")
-        
+
     def get_energies_and_forces(self, input_structures=None):
         """ Read the energies and forces for a set of structures.
 
@@ -165,9 +165,9 @@ class Structures:
         use the Structures object's own `structures` attribute.
         """
 
-        if not input_structures: 
+        if not input_structures:
             structures = self.structures
-        else: 
+        else:
             structures = input_structures
 
         energies = []
@@ -187,8 +187,8 @@ class Structures:
 
         If `input_structures` is not given, self.structures are used.
         If `target_directory` is not given, CAMUS_LAMMPS_DATA_DIR environment variable is used.
-        If `prefix='auto'`, a list of integers [1_, 2_, ...] will be used as prefixes of the file names.
-        Otherwise, a list of prefixes should be given.
+        If `prefix='auto'`, a list of integers [0_, 1_, ...] will be used as prefixes of the file names.
+        Otherwise, a list of prefixes should be given and the filenames will be `{prefix}lammps.data`.
         If write_masses=True, Masses section will be added to the created file LAMMPS data file. In this case,
         specorder (order of atom types in which to write the LAMMPS data file) has to be specified.
         """
@@ -204,11 +204,11 @@ class Structures:
         # Write LAMMPS data files
         for i, structure in enumerate(input_structures):
             if prefixes == 'auto':
-                prefix = str(i+1)
+                prefix = str(i) + '_'
             else:
                 prefix = str(prefixes[i])
 
-            file_name = os.path.join(target_directory, f'{prefix}_lammps.data')
+            file_name = os.path.join(target_directory, f'{prefix}lammps.data')
             write(file_name, structure, format='lammps-data', specorder=specorder)
 
             # Write masses if requested
@@ -230,10 +230,8 @@ class Structures:
                         lines.insert(i, 'Masses\n\n')
                         for j, spec in enumerate(specorder):
                             lines.insert(i+j+1, f'{j+1} {masses[j]} # {spec}\n')
-                        lines.insert(i+j+2, '\n')    
+                        lines.insert(i+j+2, '\n')
                         break
 
                 with open(file_name, 'w') as f:
                     f.writelines(lines)
-
- 
