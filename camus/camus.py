@@ -19,7 +19,7 @@ class Camus:
         """
 
         self.Cstructures = Structures(structures)
-        self.Cartn = ARTn(artn_outputs)
+        self.Cartn = ARTn()
 
 
 
