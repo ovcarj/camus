@@ -95,33 +95,39 @@ class Structures:
     def artn_set(self):
         del self._artn_set
 
-    def find_unique_structures(self, replace_structures=False):
-        """ Find a set of unique structures by some criterium (to be defined)
+    def find_unique_structures(self, input_structures=None, replace_structures=False):
+        """ Find a set of unique structures by some criterium (to be defined) from a set of `input_structures`.
+        If `input_structures` is not given, self.structures will be used.
 
         If replace_structures=True, replace the current structures in the Camus object with the unique ones.
         Otherwise, return a set of unique structures.
         """
+        if input_structures is None:
+            input_structures = self.structures
 
-        unique_structures = self.structures[0] #for testing purposes
+        unique_structures = input_structures[0] #for testing purposes
 
         if replace_structures:
             self.structures = unique_structures
         else:
             return unique_structures
 
-    def create_datasets(self, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
-        """ Separates the structures into training, validation and test sets.
+    def create_datasets(self, input_structures, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
+        """ Separates the structures from `input_structures` into training, validation and test sets.
+        If `input_structures` is not given, self.structures will be used.
 
         If randomize=True, randomizes the ordering of structures.
         """
+        if input_structures is None:
+            input_structures = self.structures
 
         if training_percent + validation_percent + test_percent != 1.0:
             raise ValueError("Percentages do not add up to 1.0")
 
-        if len(self.structures) == 0:
+        if len(input_structures) == 0:
             raise ValueError("No structures to create datasets from.")
 
-        structures = self.structures.copy()
+        structures = input_structures.copy()
 
         if randomize:
             random.shuffle(structures)
@@ -138,7 +144,7 @@ class Structures:
     def create_artn_set(self, input_structures=None, mode='random', indices=None, number_of_structures=100):
         """ Creates a `number_of_structures` of structures to be used as input structures for ARTn searches.
 
-        If the optional list of `input_structures` is not provided, use the Structures object's own `structures` 
+        If the optional list of `input_structures` is not provided, use the Structures object's own `structures`
         attribute as the base set from which to create the structures.
 
         If `mode='random'`, randomly select `number_of_structures` from the base set.
