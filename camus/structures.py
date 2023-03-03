@@ -112,7 +112,7 @@ class Structures:
         else:
             return unique_structures
 
-    def create_datasets(self, input_structures, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
+    def create_datasets(self, input_structures=None, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
         """ Separates the structures from `input_structures` into training, validation and test sets.
         If `input_structures` is not given, self.structures will be used.
 
