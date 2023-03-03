@@ -250,3 +250,34 @@ class Structures:
 
                 with open(file_name, 'w') as f:
                     f.writelines(lines)
+
+    def set_charges(self, charges_input={}, input_structures=None):
+        """ Method that takes a dictionary `charges_input = {atomic_type1: charge, atomic_type2: charge, ...}` and sets the charges to
+        every structure in `input_structures` using ase.atoms.set_initial_charges() method. Can be useful for classical potential simulations.
+
+        If `input_structures` is not given, self.structures are used.
+        If `charges_input` are not given, defaults to charges given in https://doi.org/10.1039/D0TA03200J
+
+        """
+        if input_structures is None:
+            input_structures = self.structures
+
+        if not charges_input:
+            charges_input = {
+                    'Pb': 0.9199,
+                    'Cs': 1.0520,
+                    'I': -0.6573,
+                    'Br': -0.6573
+                    }
+
+        # Special case of single input structure:
+        if isinstance(input_structures, Atoms): input_structures = [input_structures]
+
+        # Create the full charges array for all atoms and set_initial_charges(charges)
+        for structure in input_structures:
+            charges = np.empty(structure.get_global_number_of_atoms())
+
+            for i, symbol in enumerate(structure.get_chemical_symbols()):
+                charges[i] = charges_input[symbol]
+
+            structure.set_initial_charges(charges)
