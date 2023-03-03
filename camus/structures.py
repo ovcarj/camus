@@ -162,7 +162,7 @@ class Structures:
     def get_energies_and_forces(self, input_structures=None):
         """ Read the energies and forces for a set of structures.
 
-        If the optional argument `structures` is not provided, 
+        If the optional argument `structures` is not provided,
         use the Structures object's own `structures` attribute.
         """
 
@@ -183,7 +183,8 @@ class Structures:
 
         return np.array(energies), np.array(forces)
 
-    def write_lammps_data(self, target_directory=None, input_structures=None, prefixes='auto', specorder=None, write_masses=False):
+    def write_lammps_data(self, target_directory=None, input_structures=None, prefixes='auto', specorder=None, write_masses=False,
+            atom_style='atomic'):
         """ Creates LAMMPS data files from a list of ASE Atoms objects in a target directory.
 
         If `input_structures` is not given, self.structures are used.
@@ -217,7 +218,7 @@ class Structures:
                     prefix = prefixes
 
             file_name = os.path.join(target_directory, f'{prefix}lammps.data')
-            write(file_name, structure, format='lammps-data', specorder=specorder)
+            write(file_name, structure, format='lammps-data', specorder=specorder, atom_style=atom_style)
 
             # Write masses if requested
             if write_masses:
