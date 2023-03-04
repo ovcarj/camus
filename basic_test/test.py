@@ -51,7 +51,7 @@ lmp_input_dict = {
 camus_object.Cartn.set_lammps_parameters(input_parameters=lmp_input_dict)
 camus_object.Cartn.write_lammps_in(filename='test_nonstd_lmp.in')
 
-print('Wrote non-standard LAMMPS input to $CAMUS_LAMMPS_DATA_DIR')
+print('Wrote non-standard LAMMPS input to $CAMUS_LAMMPS_DATA_DIR.')
 print('Test OK')
 
 
