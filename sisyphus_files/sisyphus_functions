@@ -1,0 +1,207 @@
+advance_search () {
+
+    if grep -q "ARTn search failed" artn.out
+
+    then
+        artn_failure
+
+    else
+        echo "MSG_$outer_counter: ARTn search #$outer_counter PASSED." >> $HILL_LOG_FILE
+        parse_artn_out
+        audition_minimas
+
+    fi
+
+    outer_counter=$(( $outer_counter + 1 ))
+
+}
+
+
+parse_artn_out () {
+
+    CONFIGURATION_FILES=$(grep "> Configuration Files" artn.out)
+    SADDLE_POINT_FILE=$(echo "$CONFIGURATION_FILES" | awk {'print $8'})
+    FORWARD_MINIMUM_FILE=$(echo "$CONFIGURATION_FILES" | awk {'print $10'})
+    BACKWARD_MINIMUM_FILE=$(echo "$CONFIGURATION_FILES" | awk {'print $12'})
+
+    DEBRIEFS=$(grep "DEBRIEF" artn.out)
+    SADDLE_DEBRIEF=$(echo "$DEBRIEFS" | head -1)
+    FORWARD_DEBRIEF=$(echo "$DEBRIEFS" | tail -2 | head -1)
+    BACKWARD_DEBRIEF=$(echo "$DEBRIEFS" | tail -1)
+
+    FORWARD_DELR=$(echo "$FORWARD_DEBRIEF" | awk {'print $22'})
+    BACKWARD_DELR=$(echo "$BACKWARD_DEBRIEF" | awk {'print $22'})
+
+}
+
+
+audition_minimas () {
+
+    if (( $(echo "$FORWARD_DELR < $delr_threshold" | bc) )) || (( $(echo "$BACKWARD_DELR < $delr_threshold" | bc) ))
+
+    then
+        echo "MSG_$outer_counter: Determined a connected path from previous minimum." >> $HILL_LOG_FILE
+
+        if (( $(echo "$FORWARD_DELR >= $BACKWARD_DELR" | bc -l) ))
+
+        then
+            echo "MSG_$outer_counter: The forward minimum is further from the starting point. delr = $FORWARD_DELR A" >> $HILL_LOG_FILE
+            audition_energies $FORWARD_MINIMUM_FILE
+
+        else
+            echo "MSG_$outer_counter: The backward minimum is further from the starting point. delr = $BACKWARD_DELR A" >> $HILL_LOG_FILE
+            audition_energies $BACKWARD_MINIMUM_FILE
+
+        fi
+
+    else
+        echo "MSG_$outer_counter: Determined that the path is disconnected. Changing initial parameters and rerunning." >> $HILL_LOG_FILE
+        basin_counter=$(( $basin_counter + 1 ))
+        bash change_initial_parameters.sh $basin_counter
+
+    fi
+
+}
+
+
+audition_energies () {
+
+    CANDIDATE_FILE=$1
+    
+    E_minimum=$(head -2 $CANDIDATE_FILE | tail -1 | awk {'print $NF'} | tr ":" "\n" | tail -1)
+
+    if (( $(echo "$E_minimum $ACCEPTANCE_SIGN $E_current" | bc -l) ))
+    then
+        accept_minimum
+    else
+        reject_minimum
+    fi
+
+}
+
+
+accept_minimum () {
+
+    ACCEPTED_FILE=$CANDIDATE_FILE
+
+    minima_counter=$(( $minima_counter + 1 ))
+
+    delta_E=$(echo "$E_minimum - $E_current" | bc -l)
+
+    echo "MSG_$outer_counter: Accepting minimum #$minima_counter" >> $HILL_LOG_FILE
+    echo "MSG_$outer_counter: E_previous = $E_current    E_minimum = $E_minimum    delta_E_accepted = $delta_E" >> $HILL_LOG_FILE
+
+    save_minimum
+    move_starting_point
+
+    E_current=$E_minimum
+    dE_initial=$(echo "$E_current - $E_initial" | bc -l)
+    basin_counter=0
+    change_initial_parameters $basin_counter
+
+}
+
+
+reject_minimum () {
+
+    echo "MSG_$outer_counter: Rejecting current minimum because E_minimum $REJECTION_SIGN E_current." >> $HILL_LOG_FILE
+
+    delta_E=$(echo "$E_minimum - $E_current" | bc -l)
+
+    echo "MSG_$outer_counter: E_current = $E_current    E_minimum = $E_minimum    delta_E_rejected = $delta_E" >> $HILL_LOG_FILE
+    echo "MSG_$outer_counter: Changing initial parameters and rerunning..." >> $HILL_LOG_FILE
+
+    basin_counter=$(( $basin_counter + 1 ))
+    change_initial_parameters $basin_counter
+
+}
+
+
+save_minimum () {
+
+    cp $ACCEPTED_FILE ${dE_initial_threshold}_${dE_final_threshold}_minimum_$minima_counter.xyz
+    cp $SADDLE_POINT_FILE ${dE_initial_threshold}_${dE_final_threshold}_saddlepoint_$minima_counter.xyz
+    cp artn.in  ${dE_initial_threshold}_${dE_final_threshold}_ARTn_$minima_counter.in
+    cp artn.out ${dE_initial_threshold}_${dE_final_threshold}_ARTn_$minima_counter.out
+
+    E_saddle=$(head -2 $SADDLE_POINT_FILE | tail -1 | awk {'print $NF'} | tr ":" "\n" | tail -1)
+
+    echo "$E_minimum" >> $MINIMA_ENERGIES_FILE
+    echo "$E_saddle" >> $SADDLEPOINT_ENERGIES_FILE
+    echo "$basin_counter" >> $BASIN_COUNTERS_FILE
+    echo "$E_saddle" >> $ALL_ENERGIES_FILE
+    echo "$E_minimum" >> $ALL_ENERGIES_FILE
+
+}
+
+
+move_starting_point () {
+
+    tail -n+3 $ACCEPTED_FILE | awk '{$1=$5=$6=$7=""; print $0}' | sort -k4 -n | awk '{$4=""; print $0}' > minima_coords.tmp
+
+    grep "Atoms" conf.sw -B10000 -A1 > top_of_data.tmp
+
+    ATOMS_NUMBER=$(grep "atoms" conf.sw | awk {'print $1'})
+    grep "Atoms" conf.sw -A$(echo "$ATOMS_NUMBER + 2" | bc -l) | tail -$ATOMS_NUMBER | awk '{print $1" " $2}' > two_columns.tmp
+
+    paste two_columns.tmp minima_coords.tmp > coords_for_data.tmp
+
+    cat coords_for_data.tmp >> top_of_data.tmp
+
+    mv conf.sw ${dE_initial_threshold}_${dE_final_threshold}_conf_$(echo "$minima_counter - 1" | bc -l).sw
+    mv top_of_data.tmp conf.sw
+    rm *.tmp
+
+}
+
+
+artn_failure () {
+
+    echo "MSG_$outer_counter: ARTn search #$outer_counter FAILED. Changing initial parameters and rerunning." >> $HILL_LOG_FILE
+    basin_counter=$(( $basin_counter + 1 ))
+    change_initial_parameters $basin_counter
+
+}
+
+
+change_initial_parameters () {
+
+    bash change_initial_parameters.sh $basin_counter
+
+}
+
+
+define_file_names () {
+
+    MINIMA_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_minima_energies.dat"
+    SADDLEPOINT_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_saddlepoint_energies.dat"
+    ALL_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_all_energies.dat"
+    BASIN_COUNTERS_FILE="${dE_initial_threshold}_${dE_final_threshold}_basin_counters.dat"
+    HILL_LOG_FILE="${dE_initial_threshold}_${dE_final_threshold}_HILL.log"
+
+}
+
+
+initialize_files () {
+
+    touch $MINIMA_ENERGIES_FILE
+    touch $SADDLEPOINT_ENERGIES_FILE
+    touch $ALL_ENERGIES_FILE
+    touch $BASIN_COUNTERS_FILE
+    touch $HILL_LOG_FILE
+
+}
+
+
+cleanup_minima () {
+
+    rm -f *minimum_* *saddlepoint_* *conf_*.sw
+
+}
+
+
+cleanup_dat () {
+
+    rm -f $MINIMA_ENERGIES_FILE $SADDLEPOINT_ENERGIES_FILE $ALL_ENERGIES_FILE $BASIN_COUNTERS_FILE $HILL_LOG_FILE *ARTn_* sad* min*xsf min0*xyz *counter
+
+}
