@@ -124,13 +124,18 @@ class ARTn:
         with open(os.path.join(target_directory, 'artn.in'), 'w') as f:
             f.write(artn_in_content)
 
-    def set_lammps_parameters(self, path_to_model=None, specorder=None, **kwargs):
+    def set_lammps_parameters(self, input_parameters={}, path_to_model=None, specorder=None, **kwargs):
         """ Method that sets parameters to be written in lammps.in to self._lammps_parameters dictionary.
 
         Parameters:
-            path to model: path to the ML model to be used. If not specified, a default hardcoded directory will be used.
-            specorder: order of atomic species. If not specified, a default hardcoded ordering will be used.
+            `input_parameters`: dictionary of LAMMPS commands and arguments in the format {'command1': 'args1' }.
+            If `input_parameters` is not given, default parameters for a basic ARTn calculation will be used.
+            `path to model`: path to the ML model to be used. If not specified, a default hardcoded directory will be used.
+            `specorder`: order of atomic species. If not specified, a default hardcoded ordering will be used.
+
             WARNING: not specifying the above parameters may easily lead to wrong results.
+            NOTE: this method is intended to be used mainly within the CAMUS algorithm and therefore it currently doesn't have a lot of
+            flexibility (dicts may not be the best choice...).
 
         """
 
@@ -155,17 +160,23 @@ class ARTn:
             'minimize': '1e-4 1e-5 5000 10000',
              }
 
-        # Set self._lammps_parameters
-        for key, value in default_parameters.items():
-            self._lammps_parameters[key] = kwargs.pop(key, value)
+        # If input parameters are not given, use default_parameters
+        if not input_parameters:
+            input_parameters = default_parameters
 
-    def write_lammps_in(self, target_directory=None):
-        """ Method that writes a standard lammps.in file to a `target directory` using self._lammps_parameters.
+        # Set self._lammps_parameters
+        for key, value in input_parameters.items():
+            self._lammps_parameters[key] = value
+
+
+    def write_lammps_in(self, target_directory=None, filename='lammps.in'):
+        """ Method that writes a lammps.in file to a `target directory/filename` using self._lammps_parameters.
         If `target_directory` is not given, `CAMUS_LAMMPS_DATA_DIR` environment variable will be used.
         If self._lammps_parameters is an empty dictionary, it will be automatically generated.
 
         Parameters:
             target_directory: directory in which to write the lammps.in file
+            filename: name of the lammps.in file
 
         """
 
@@ -187,11 +198,14 @@ class ARTn:
         lammps_in_content = "clear\n"
         for key, value in self.lammps_parameters.items():
             if value is not None:
-                lammps_in_content += f"{key}       {self._lammps_parameters[key]}\n"
-        lammps_in_content += "/\n"
+                if isinstance(value, list):
+                    for v in value:
+                        lammps_in_content += f"{key}       {v}\n"
+                else:
+                    lammps_in_content += f"{key}       {value}\n"
 
         # Write the lammps.in file to the target directory
-        with open(os.path.join(target_directory, 'lammps.in'), 'w') as f:
+        with open(os.path.join(target_directory, filename), 'w') as f:
             f.write(lammps_in_content)
 
 
