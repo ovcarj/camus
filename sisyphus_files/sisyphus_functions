@@ -57,7 +57,7 @@ audition_minimas () {
     else
         echo "MSG_$outer_counter: Determined that the path is disconnected. Changing initial parameters and rerunning." >> $HILL_LOG_FILE
         basin_counter=$(( $basin_counter + 1 ))
-        bash change_initial_parameters.sh $basin_counter
+        change_initial_parameters 
 
     fi
 
@@ -97,7 +97,7 @@ accept_minimum () {
     E_current=$E_minimum
     dE_initial=$(echo "$E_current - $E_initial" | bc -l)
     basin_counter=0
-    change_initial_parameters $basin_counter
+    change_initial_parameters 
 
 }
 
@@ -112,7 +112,7 @@ reject_minimum () {
     echo "MSG_$outer_counter: Changing initial parameters and rerunning..." >> $HILL_LOG_FILE
 
     basin_counter=$(( $basin_counter + 1 ))
-    change_initial_parameters $basin_counter
+    change_initial_parameters
 
 }
 
@@ -159,14 +159,18 @@ artn_failure () {
 
     echo "MSG_$outer_counter: ARTn search #$outer_counter FAILED. Changing initial parameters and rerunning." >> $HILL_LOG_FILE
     basin_counter=$(( $basin_counter + 1 ))
-    change_initial_parameters $basin_counter
+    change_initial_parameters 
 
 }
 
 
 change_initial_parameters () {
 
-    bash change_initial_parameters.sh $basin_counter
+    step0=0.01
+    delta_step=0.005
+    push=$(echo "$step0 + $basin_counter*$delta_step" | bc -l)
+
+    sed -i "s/push_step_size = .*/push_step_size = $push/" artn.in
 
 }
 
