@@ -124,7 +124,7 @@ class ARTn:
         with open(os.path.join(target_directory, 'artn.in'), 'w') as f:
             f.write(artn_in_content)
 
-    def set_lammps_parameters(self, input_parameters={}, path_to_model=None, specorder=None, **kwargs):
+    def set_lammps_parameters(self, input_parameters={}, path_to_model=None, specorder=None, initial_sisyphus=False, **kwargs):
         """ Method that sets parameters to be written in lammps.in to self._lammps_parameters dictionary.
 
         Parameters:
@@ -132,10 +132,13 @@ class ARTn:
             If `input_parameters` is not given, default parameters for a basic ARTn calculation will be used.
             `path to model`: path to the ML model to be used. If not specified, a default hardcoded directory will be used.
             `specorder`: order of atomic species. If not specified, a default hardcoded ordering will be used.
+            `initial_sisyphus`: if True, a standard lammps.in file for a calculation of potential energy is created.
+                                It is necessary to perform this calculation to perform the Sisyphus search.
 
             WARNING: not specifying the above parameters may easily lead to wrong results.
-            NOTE: this method is intended to be used mainly within the CAMUS algorithm and therefore it currently doesn't have a lot of
-            flexibility (dicts may not be the best choice...).
+
+            NOTE: this method is intended to be used mainly within the CAMUS algorithm for Sisyphus searches 
+            and therefore it currently doesn't have a lot of flexibility (dicts may not be the best choice).
 
         """
 
@@ -144,6 +147,7 @@ class ARTn:
         if specorder is None:
             specorder = 'Br I Cs Pb'
 
+        # Default parameters for ARTn search
         default_parameters= {
             'units': 'metal',
             'dimension': '3',
@@ -160,9 +164,31 @@ class ARTn:
             'minimize': '1e-4 1e-5 5000 10000',
              }
 
+        # Default parameters for the initial Sisyphus calculation
+        default_initial_sisyphus = {
+            'units': 'metal',
+            'dimension': '3',
+            'boundary': 'p p p',
+            'atom_style': 'atomic',
+            'atom_modify': 'map array',
+            'read_data': 'lammps.data',
+            'pair_style': 'allegro',
+            'pair_coeff': f'* * {path_to_model} {specorder}',
+            'compute': 'eng all pe/atom',
+            'compute': 'eatoms all reduce sum c_eng',
+            'thermo': '100',
+            'thermo_style': 'custom step pe fnorm lx ly lz press pxx pyy pzz c_eatoms',
+            'run': '0'
+             }
+
+
         # If input parameters are not given, use default_parameters
         if not input_parameters:
             input_parameters = default_parameters
+
+        # If initial_sisyphus=True, use default_initial_sisyphus parameters
+        if initial_sisyphus:
+            input_parameters = default_initial_sisyphus
 
         # Set self._lammps_parameters
         for key, value in input_parameters.items():
