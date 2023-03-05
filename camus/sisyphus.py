@@ -273,7 +273,7 @@ class Sisyphus:
 
     def write_sisyphus_script(self, target_directory=None, filename='sisyphus.sh'):
         """ Method that writes the main Sisyphus bash script to `target directory/filename` using self._sisyphus_parameters.
-        If `target_directory` is not given, `CAMUS_ARTN_DATA_DIR` environment variable will be used.
+        If `target_directory` is not given, `CAMUS_SISYPHUS_DATA_DIR` environment variable will be used.
         If self._sisyphus_parameters is an empty dictionary, it will be automatically generated.
 
         Parameters:
@@ -281,11 +281,11 @@ class Sisyphus:
             filename: name of the Sisyphus bash script
 
         """
-        # Set the default target directory to CAMUS_ARTN_DATA_DIR environment variable
+        # Set the default target directory to CAMUS_SISYPHUS_DATA_DIR environment variable
         if target_directory is None:
-            target_directory = os.environ.get('CAMUS_ARTN_DATA_DIR')
+            target_directory = os.environ.get('CAMUS_SISYPHUS_DATA_DIR')
             if target_directory is None:
-                raise ValueError("Target directory not specified and CAMUS_ARTN_DATA_DIR environment variable is not set.")
+                raise ValueError("Target directory not specified and CAMUS_SISYPHUS_DATA_DIR environment variable is not set.")
 
         # Create target directory if it does not exist
         if not os.path.exists(target_directory):
@@ -338,7 +338,7 @@ do
     if (( $(echo "$outer_counter < $maximum_steps" | bc -l) ))
     then
         echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $SISYPHUS_LOG_FILE
-        mpirun -np 1 ./lmp_mpi -in lammps.in
+        {self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} -in lammps.in
 
         advance_search
     else
@@ -364,7 +364,7 @@ do
     if (( $(echo "$outer_counter < $maximum_steps" | bc -l) ))
     then
         echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $SISYPHUS_LOG_FILE
-        mpirun -np 1 ./lmp_mpi -in lammps.in
+        {self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} -in lammps.in
 
         advance_search
     else
