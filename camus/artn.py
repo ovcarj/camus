@@ -2,13 +2,17 @@
 
 This module defines everything related to handling ARTn inputs and outputs.
 
+To be discussed - should Sisyphus related methods be moved to the
+Camus class, or should this class simply be renamed Sisyphus, as it deals
+with more general things than just ARTn? The second option seems more logical...
 """
 
 import os
 
 class ARTn:
 
-    def __init__(self, artn_outputs=[], artn_parameters={}, lammps_parameters={}):
+    def __init__(self, artn_outputs=[], artn_parameters={}, lammps_parameters={},
+            sisyphus_parameters={}):
         """
         Initializes a new ARTn object.
 
@@ -20,6 +24,7 @@ class ARTn:
         self._artn_outputs = artn_outputs
         self._artn_parameters = artn_parameters
         self._lammps_parameters = lammps_parameters
+        self._sisyphus_parameters = sisyphus_parameters
 
     @property
     def artn_outputs(self):
@@ -39,6 +44,7 @@ class ARTn:
 
     @artn_parameters.setter
     def artn_parameters(self, new_artn_parameters):
+        self._artn_parameters = {} # Probably makes more sense this way...
         self._artn_parameters = new_artn_parameters
 
     @artn_parameters.deleter
@@ -51,11 +57,25 @@ class ARTn:
 
     @lammps_parameters.setter
     def lammps_parameters(self, new_lammps_parameters):
+        self._lammps_parameters = {} # Probably makes more sense this way...
         self._lammps_parameters = new_lammps_parameters
 
     @lammps_parameters.deleter
     def lammps_parameters(self):
         del self._lammps_parameters
+        
+    @property
+    def sisyphus_parameters(self):
+        return self._sisyphus_parameters
+
+    @sisyphus_parameters.setter
+    def sisyphus_parameters(self, new_sisyphus_parameters):
+        self._sisyphus_parameters = {} # Probably makes more sense this way...
+        self._sisyphus_parameters = new_sisyphus_parameters
+
+    @sisyphus_parameters.deleter
+    def sisyphus_parameters(self):
+        del self._sisyphus_parameters
 
 
     def set_artn_parameters(self, **kwargs):
@@ -196,7 +216,7 @@ class ARTn:
 
 
     def write_lammps_in(self, target_directory=None, filename='lammps.in'):
-        """ Method that writes a lammps.in file to a `target directory/filename` using self._lammps_parameters.
+        """ Method that writes a lammps.in file to `target directory/filename` using self._lammps_parameters.
         If `target_directory` is not given, `CAMUS_LAMMPS_DATA_DIR` environment variable will be used.
         If self._lammps_parameters is an empty dictionary, it will be automatically generated.
 
@@ -233,5 +253,30 @@ class ARTn:
         # Write the lammps.in file to the target directory
         with open(os.path.join(target_directory, filename), 'w') as f:
             f.write(lammps_in_content)
+
+    def write_sisyphus_script(self, target_directory=None, filename='sisyphus.sh'):
+        """ Method that writes the main Sisyphus bash script to `target directory/filename` using self._sisyphus_parameters.
+        If `target_directory` is not given, `CAMUS_ARTN_DATA_DIR` environment variable will be used.
+        If self._sisyphus_parameters is an empty dictionary, it will be automatically generated.
+
+        Parameters:
+            target_directory: directory in which to write the lammps.in file
+            filename: name of the Sisyphus bash script
+
+
+        """
+        # Set the default target directory to CAMUS_ARTN_DATA_DIR environment variable
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_ARTN_DATA_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_ARTN_DATA_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Set parameters if the user didn't set them explicitly beforehand
+        if not self.sisyphus_parameters:
+            self.set_sisyphus_parameters()
 
 
