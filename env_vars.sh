@@ -19,7 +19,7 @@ echo 'export CAMUS_BASE='$WD'' >> ~/.bashrc
 echo 'export CAMUS_LAMMPS_DATA_DIR=~/.CAMUS/LAMMPS_data' >> ~/.bashrc
 
 # Define default ARTn data target directory
-echo 'export CAMUS_ARTN_DATA_DIR=~/.CAMUS/ARTn_data' >> ~/.bashrc
+echo 'export CAMUS_SISYPHUS_DATA_DIR=~/.CAMUS/SISYPHUS_data' >> ~/.bashrc
 
 # Define LAMMPS execution command
 echo 'export RUN_LAMMPS=""' >> ~/.bashrc

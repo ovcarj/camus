@@ -1,42 +1,25 @@
-""" Definition of the ARTn class.
+""" Definition of the Sisyphus class.
 
-This module defines everything related to handling ARTn inputs and outputs.
+This module defines everything related to handling Sisyphus inputs, including ARTn and LAMMPS inputs.
 
-To be discussed - should Sisyphus related methods be moved to the
-Camus class, or should this class simply be renamed Sisyphus, as it deals
-with more general things than just ARTn? The second option seems more logical...
 """
 
 import os
 
-class ARTn:
+class Sisyphus:
 
-    def __init__(self, artn_outputs=[], artn_parameters={}, lammps_parameters={},
+    def __init__(self, artn_parameters={}, lammps_parameters={},
             sisyphus_parameters={}):
         """
-        Initializes a new ARTn object.
+        Initializes a new Sisyphus object.
 
         Parameters:
-            artn_outputs (list of ARTn output filenames): TODO: user should be able to parse these outputs.
-                Defaults to an empty list.
+            parameter: parameter description placeholder.
         """
 
-        self._artn_outputs = artn_outputs
         self._artn_parameters = artn_parameters
         self._lammps_parameters = lammps_parameters
         self._sisyphus_parameters = sisyphus_parameters
-
-    @property
-    def artn_outputs(self):
-        return self._artn_outputs
-
-    @artn_outputs.setter
-    def artn_outputs(self, new_artn_outputs):
-        self._artn_outputs = new_artn_outputs
-
-    @artn_outputs.deleter
-    def artn_outputs(self):
-        del self._artn_outputs
 
     @property
     def artn_parameters(self):

@@ -3,7 +3,7 @@ from camus import camus
 
 structs = read('test.traj', index='0:100')
 
-camus_object = camus.Camus(structures=structs, artn_outputs=[])
+camus_object = camus.Camus(structures=structs)
 
 print(f'Read {len(camus_object.Cstructures.structures)} structures into a camus.Cstructures object.')
 
@@ -49,8 +49,8 @@ lmp_input_dict = {
         'compute': 'cpe all pe',
         }
 
-camus_object.Cartn.set_lammps_parameters(input_parameters=lmp_input_dict)
-camus_object.Cartn.write_lammps_in(filename='test_nonstd_lmp.in')
+camus_object.Csisyphus.set_lammps_parameters(input_parameters=lmp_input_dict)
+camus_object.Csisyphus.write_lammps_in(filename='test_nonstd_lmp.in')
 
 print('Wrote non-standard LAMMPS input to $CAMUS_LAMMPS_DATA_DIR.')
 print('Test OK')
