@@ -6,7 +6,7 @@ advance_search () {
         artn_failure
 
     else
-        echo "MSG_$outer_counter: ARTn search #$outer_counter PASSED." >> $HILL_LOG_FILE
+        echo "MSG_$outer_counter: ARTn search #$outer_counter PASSED." >> $SISYPHUS_LOG_FILE
         parse_artn_out
         audition_minimas
 
@@ -40,22 +40,22 @@ audition_minimas () {
     if (( $(echo "$FORWARD_DELR < $delr_threshold" | bc) )) || (( $(echo "$BACKWARD_DELR < $delr_threshold" | bc) ))
 
     then
-        echo "MSG_$outer_counter: Determined a connected path from previous minimum." >> $HILL_LOG_FILE
+        echo "MSG_$outer_counter: Determined a connected path from previous minimum." >> $SISYPHUS_LOG_FILE
 
         if (( $(echo "$FORWARD_DELR >= $BACKWARD_DELR" | bc -l) ))
 
         then
-            echo "MSG_$outer_counter: The forward minimum is further from the starting point. delr = $FORWARD_DELR A" >> $HILL_LOG_FILE
+            echo "MSG_$outer_counter: The forward minimum is further from the starting point. delr = $FORWARD_DELR A" >> $SISYPHUS_LOG_FILE
             audition_energies $FORWARD_MINIMUM_FILE
 
         else
-            echo "MSG_$outer_counter: The backward minimum is further from the starting point. delr = $BACKWARD_DELR A" >> $HILL_LOG_FILE
+            echo "MSG_$outer_counter: The backward minimum is further from the starting point. delr = $BACKWARD_DELR A" >> $SISYPHUS_LOG_FILE
             audition_energies $BACKWARD_MINIMUM_FILE
 
         fi
 
     else
-        echo "MSG_$outer_counter: Determined that the path is disconnected. Changing initial parameters and rerunning." >> $HILL_LOG_FILE
+        echo "MSG_$outer_counter: Determined that the path is disconnected. Changing initial parameters and rerunning." >> $SISYPHUS_LOG_FILE
         basin_counter=$(( $basin_counter + 1 ))
         change_initial_parameters 
 
@@ -88,8 +88,8 @@ accept_minimum () {
 
     delta_E=$(echo "$E_minimum - $E_current" | bc -l)
 
-    echo "MSG_$outer_counter: Accepting minimum #$minima_counter" >> $HILL_LOG_FILE
-    echo "MSG_$outer_counter: E_previous = $E_current    E_minimum = $E_minimum    delta_E_accepted = $delta_E" >> $HILL_LOG_FILE
+    echo "MSG_$outer_counter: Accepting minimum #$minima_counter" >> $SISYPHUS_LOG_FILE
+    echo "MSG_$outer_counter: E_previous = $E_current    E_minimum = $E_minimum    delta_E_accepted = $delta_E" >> $SISYPHUS_LOG_FILE
 
     save_minimum
     move_starting_point
@@ -104,12 +104,12 @@ accept_minimum () {
 
 reject_minimum () {
 
-    echo "MSG_$outer_counter: Rejecting current minimum because E_minimum $REJECTION_SIGN E_current." >> $HILL_LOG_FILE
+    echo "MSG_$outer_counter: Rejecting current minimum because E_minimum $REJECTION_SIGN E_current." >> $SISYPHUS_LOG_FILE
 
     delta_E=$(echo "$E_minimum - $E_current" | bc -l)
 
-    echo "MSG_$outer_counter: E_current = $E_current    E_minimum = $E_minimum    delta_E_rejected = $delta_E" >> $HILL_LOG_FILE
-    echo "MSG_$outer_counter: Changing initial parameters and rerunning..." >> $HILL_LOG_FILE
+    echo "MSG_$outer_counter: E_current = $E_current    E_minimum = $E_minimum    delta_E_rejected = $delta_E" >> $SISYPHUS_LOG_FILE
+    echo "MSG_$outer_counter: Changing initial parameters and rerunning..." >> $SISYPHUS_LOG_FILE
 
     basin_counter=$(( $basin_counter + 1 ))
     change_initial_parameters
@@ -157,7 +157,7 @@ move_starting_point () {
 
 artn_failure () {
 
-    echo "MSG_$outer_counter: ARTn search #$outer_counter FAILED. Changing initial parameters and rerunning." >> $HILL_LOG_FILE
+    echo "MSG_$outer_counter: ARTn search #$outer_counter FAILED. Changing initial parameters and rerunning." >> $SISYPHUS_LOG_FILE
     basin_counter=$(( $basin_counter + 1 ))
     change_initial_parameters 
 
@@ -181,7 +181,7 @@ define_file_names () {
     SADDLEPOINT_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_saddlepoint_energies.dat"
     ALL_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_all_energies.dat"
     BASIN_COUNTERS_FILE="${dE_initial_threshold}_${dE_final_threshold}_basin_counters.dat"
-    HILL_LOG_FILE="${dE_initial_threshold}_${dE_final_threshold}_HILL.log"
+    SISYPHUS_LOG_FILE="${dE_initial_threshold}_${dE_final_threshold}_SISYPHUS.log"
 
 }
 
@@ -192,7 +192,7 @@ initialize_files () {
     touch $SADDLEPOINT_ENERGIES_FILE
     touch $ALL_ENERGIES_FILE
     touch $BASIN_COUNTERS_FILE
-    touch $HILL_LOG_FILE
+    touch $SISYPHUS_LOG_FILE
 
 }
 
@@ -206,6 +206,6 @@ cleanup_minima () {
 
 cleanup_dat () {
 
-    rm -f $MINIMA_ENERGIES_FILE $SADDLEPOINT_ENERGIES_FILE $ALL_ENERGIES_FILE $BASIN_COUNTERS_FILE $HILL_LOG_FILE *ARTn_* sad* min*xsf min0*xyz *counter
+    rm -f $MINIMA_ENERGIES_FILE $SADDLEPOINT_ENERGIES_FILE $ALL_ENERGIES_FILE $BASIN_COUNTERS_FILE $SISYPHUS_LOG_FILE *ARTn_* sad* min*xsf min0*xyz *counter
 
 }

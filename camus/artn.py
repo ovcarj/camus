@@ -354,22 +354,22 @@ while (( $(echo "$dE_initial < $dE_initial_threshold" | bc -l) ))
 do
     if (( $(echo "$outer_counter < $maximum_steps" | bc -l) ))
     then
-        echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $HILL_LOG_FILE
+        echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $SISYPHUS_LOG_FILE
         mpirun -np 1 ./lmp_mpi -in lammps.in
 
         advance_search
     else
-        echo "MSG_FAIL: Maximum number of searches ($maximum_steps) exceeded while climbing up the hill. Exiting." >> $HILL_LOG_FILE
+        echo "MSG_FAIL: Maximum number of searches ($maximum_steps) exceeded while climbing up the hill. Exiting." >> $SISYPHUS_LOG_FILE
         exit
     fi
 done
 
-echo "MSG_TOP: Top of the hill passed." >> $HILL_LOG_FILE
-echo "MSG_TOP: Top of the hill minimum index: $minima_counter" >> $HILL_LOG_FILE
+echo "MSG_TOP: Top of the hill passed." >> $SISYPHUS_LOG_FILE
+echo "MSG_TOP: Top of the hill minimum index: $minima_counter" >> $SISYPHUS_LOG_FILE
 
 E_top=$E_current
 Activation_E_forward=$(echo "$E_top - $E_initial" | bc -l)
-echo "MSG_TOP: E_initial = $E_initial    E_top = $E_top    Activation_E_forward = $Activation_E_forward" >> $HILL_LOG_FILE
+echo "MSG_TOP: E_initial = $E_initial    E_top = $E_top    Activation_E_forward = $Activation_E_forward" >> $SISYPHUS_LOG_FILE
 
 
 ACCEPTANCE_SIGN="<"       # Now we're going down the hill
@@ -380,22 +380,22 @@ while (( $(echo "$dE_initial >= $dE_final_threshold" | bc -l) ))
 do
     if (( $(echo "$outer_counter < $maximum_steps" | bc -l) ))
     then
-        echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $HILL_LOG_FILE
+        echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $SISYPHUS_LOG_FILE
         mpirun -np 1 ./lmp_mpi -in lammps.in
 
         advance_search
     else
-        echo "MSG_FAIL: Maximum number of searches ($maximum_steps) exceeded while going down the hill. Exiting." >> $HILL_LOG_FILE
+        echo "MSG_FAIL: Maximum number of searches ($maximum_steps) exceeded while going down the hill. Exiting." >> $SISYPHUS_LOG_FILE
         exit
     fi
 done
 
-echo "MSG_END: Threshold satisfied. Ending search." >> $HILL_LOG_FILE
-echo "MSG_END: Final minimum index: $minima_counter" >> $HILL_LOG_FILE
+echo "MSG_END: Threshold satisfied. Ending search." >> $SISYPHUS_LOG_FILE
+echo "MSG_END: Final minimum index: $minima_counter" >> $SISYPHUS_LOG_FILE
 
 E_final=$E_current
 Delta_E_final_top=$(echo "$E_final - $E_top" | bc -l)
 Delta_E_final_initial=$(echo "$E_final - $E_initial" | bc -l)
 
-echo "MSG_END: E_initial = $E_initial    E_top = $E_top    E_final = $E_final" >> $HILL_LOG_FILE
-echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top = $Delta_E_final_top    Delta_E_final_initial = $Delta_E_final_initial" >> $HILL_LOG_FILE""")
+echo "MSG_END: E_initial = $E_initial    E_top = $E_top    E_final = $E_final" >> $SISYPHUS_LOG_FILE
+echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top = $Delta_E_final_top    Delta_E_final_initial = $Delta_E_final_initial" >> $SISYPHUS_LOG_FILE""")
