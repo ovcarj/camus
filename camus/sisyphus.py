@@ -70,7 +70,7 @@ class Sisyphus:
         """
         default_parameters= {
             'engine_units': '\'lammps/metal\'',
-            'verbose': '0',
+            'verbose': '1',
             'zseed': None,
             'lrestart': '.false.',
             'ninit': '2',
