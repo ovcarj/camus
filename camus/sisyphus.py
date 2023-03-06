@@ -177,10 +177,7 @@ class Sisyphus:
             'read_data': 'lammps.data',
             'pair_style': 'allegro',
             'pair_coeff': f'* * {path_to_model} {specorder}',
-            'compute': 'eng all pe/atom',
-            'compute': 'eatoms all reduce sum c_eng',
-            'thermo': '100',
-            'thermo_style': 'custom step pe fnorm lx ly lz press pxx pyy pzz c_eatoms',
+            'thermo_style': 'custom step pe fnorm lx ly lz press pxx pyy pzz',
             'run': '0'
              }
 
