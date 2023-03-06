@@ -160,7 +160,7 @@ class Sisyphus:
             'read_data': 'lammps.data',
             'pair_style': 'allegro',
             'pair_coeff': f'* * {path_to_model} {specorder}',
-            'fix': '10 all artn alpha0 0.2 dmax 5.0 0.1',
+            'fix': '10 all artn alpha0 0.2 dmax 5.0',
             'timestep': '0.001',
             'reset_timestep': '0',
             'min_style': 'fire',
