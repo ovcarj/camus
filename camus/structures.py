@@ -197,8 +197,8 @@ class Structures:
         If `target_directory` is not given, CAMUS_LAMMPS_DATA_DIR environment variable is used.
         If `prefix='auto'`, a list of integers [0_, 1_, ...] will be used as prefixes of the file names.
         Otherwise, a list of prefixes should be given and the filenames will be `{prefix}lammps.data`.
+        specorder: order of atom types in which to write the LAMMPS data file.
         If write_masses=True, Masses section will be added to the created file LAMMPS data file. In this case,
-        specorder (order of atom types in which to write the LAMMPS data file) has to be specified.
         """
         if input_structures is None:
             input_structures = self.structures
@@ -208,7 +208,6 @@ class Structures:
         # Create target directory if it does not exist
         if not os.path.exists(target_directory):
             os.makedirs(target_directory)
-
 
         # Special case of single input structure:
         if isinstance(input_structures, Atoms): input_structures = [input_structures]

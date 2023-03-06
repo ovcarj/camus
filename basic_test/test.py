@@ -1,3 +1,5 @@
+import os
+
 from ase.io import read
 from camus import camus
 
@@ -53,6 +55,14 @@ camus_object.Csisyphus.set_lammps_parameters(input_parameters=lmp_input_dict)
 camus_object.Csisyphus.write_lammps_in(filename='test_nonstd_lmp.in')
 
 print('Wrote non-standard LAMMPS input to $CAMUS_LAMMPS_DATA_DIR.')
+
+camus_object.Csisyphus.lammps_parameters = {}
+
+test_directory = os.path.join(os.environ.get('CAMUS_SISYPHUS_DATA_DIR'), 'sisyphus_test_dir')
+camus_object.create_sisyphus_calculation(target_directory=test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
+
+print(f'Created files for a Sisyphus calculation in {test_directory}')
+
 print('Test OK')
 
 

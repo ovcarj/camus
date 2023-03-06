@@ -94,7 +94,7 @@ class Sisyphus:
 
     def write_artn_in(self, target_directory=None):
         """ Method that writes a standard artn.in file to a `target directory` using self._artn_parameters.
-        If `target_directory` is not given, `CAMUS_ARTN_DATA_DIR` environment variable will be used.
+        If `target_directory` is not given, `CAMUS_SISYPHUS_DATA_DIR` environment variable will be used.
         If self._artn_parameters is an empty dictionary, it will be automatically generated.
 
         Parameters:
@@ -102,11 +102,11 @@ class Sisyphus:
 
         """
 
-        # Set the default target directory to CAMUS_ARTN_DATA_DIR environment variable
+        # Set the default target directory to CAMUS_SISYPHUS_DATA_DIR environment variable
         if target_directory is None:
-            target_directory = os.environ.get('CAMUS_ARTN_DATA_DIR')
+            target_directory = os.environ.get('CAMUS_SISYPHUS_DATA_DIR')
             if target_directory is None:
-                raise ValueError("Target directory not specified and CAMUS_ARTN_DATA_DIR environment variable is not set.")
+                raise ValueError("Target directory not specified and CAMUS_SISYPHUS_DATA_DIR environment variable is not set.")
 
         # Create target directory if it does not exist
         if not os.path.exists(target_directory):
