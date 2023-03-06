@@ -12,14 +12,14 @@ from camus.sisyphus import Sisyphus
 
 class Camus:
 
-    def __init__(self, structures=[], *args, **kwargs):
+    def __init__(self, structures=[], artn_parameters={}, lammps_parameters={}, sisyphus_parameters={}):
         """
         Initializes a new Camus object, whose attributes `self.Cname` are instances of `name` classes.
         The methods in this class should allow an interface between the `name` classes.
         """
 
         self.Cstructures = Structures(structures)
-        self.Csisyphus = Sisyphus()
+        self.Csisyphus = Sisyphus(artn_parameters, lammps_parameters, sisyphus_parameters)
 
 
 

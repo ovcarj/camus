@@ -13,7 +13,7 @@ from ase.io import write
 
 class Structures:
 
-    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], artn_set=[]):
+    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], sisyphus_set=[]):
         """
         Initializes a new Structures object with a list of structures and optional training, validation and test sets.
 
@@ -25,7 +25,7 @@ class Structures:
                 Defaults to an empty list.
             test_set (list of ASE Atoms objects): List of structures to be used as the test set.
                 Defaults to an empty list.
-            artn_set (list of ASE Atoms objects): List of structures to be used as input structures for ARTn searches.
+            sisyphus_set (list of ASE Atoms objects): List of structures to be used as input structures for Sisyphus searches.
                 Defaults to an empty list.
         """
 
@@ -33,7 +33,7 @@ class Structures:
         self._training_set = training_set
         self._validation_set = validation_set
         self._test_set = test_set
-        self._artn_set = artn_set
+        self._sisyphus_set = sisyphus_set
 
     @property
     def structures(self):
@@ -84,16 +84,16 @@ class Structures:
         del self._test_set
 
     @property
-    def artn_set(self):
-        return self._artn_set
+    def sisyphus_set(self):
+        return self._sisyphus_set
 
-    @artn_set.setter
-    def artn_set(self, new_structures):
-        self._artn_set = new_structures
+    @sisyphus_set.setter
+    def sisyphus_set(self, new_structures):
+        self._sisyphus_set = new_structures
 
-    @artn_set.deleter
-    def artn_set(self):
-        del self._artn_set
+    @sisyphus_set.deleter
+    def sisyphus_set(self):
+        del self._sisyphus_set
 
     def find_unique_structures(self, input_structures=None, replace_structures=False):
         """ Find a set of unique structures by some criterium (to be defined) from a set of `input_structures`.
@@ -141,8 +141,8 @@ class Structures:
         self.validation_set = structures[num_train:num_train+num_val]
         self.test_set = structures[num_train+num_val:]
 
-    def create_artn_set(self, input_structures=None, mode='random', indices=None, number_of_structures=100):
-        """ Creates a `number_of_structures` of structures to be used as input structures for ARTn searches.
+    def create_sisyphus_set(self, input_structures=None, mode='random', indices=None, number_of_structures=100):
+        """ Creates a `number_of_structures` of structures to be used as input structures for Sisyphus searches.
 
         If the optional list of `input_structures` is not provided, use the Structures object's own `structures`
         attribute as the base set from which to create the structures.
@@ -157,10 +157,10 @@ class Structures:
             base_set = input_structures
 
         if mode == 'random':
-            self.artn_set = random.sample(base_set, number_of_structures)
+            self.sisyphus_set = random.sample(base_set, number_of_structures)
 
         elif mode == 'indices':
-            self.artn_set = [base_set[i] for i in indices]
+            self.sisyphus_set = [base_set[i] for i in indices]
 
         else:
             raise ValueError("Unsupported mode. Choose 'random' or 'indices'.")

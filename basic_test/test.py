@@ -11,9 +11,9 @@ camus_object.Cstructures.create_datasets()
 
 print(f'Created ML datasets. {len(camus_object.Cstructures.test_set)} structures are in the test set.')
 
-camus_object.Cstructures.create_artn_set()
+camus_object.Cstructures.create_sisyphus_set()
 
-print(f'Created ARTn set randomly. {len(camus_object.Cstructures.artn_set)} structures are in the ARTn set.')
+print(f'Created Sisyphus set randomly. {len(camus_object.Cstructures.sisyphus_set)} structures are in the Sisyphus set.')
 
 
 empty = camus.Camus(structs)
