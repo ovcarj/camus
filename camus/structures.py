@@ -13,7 +13,7 @@ from ase.io import write
 
 class Structures:
 
-    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], sisyphus_set=[]):
+    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], sisyphus_set=[], minimized_set=[]):
         """
         Initializes a new Structures object with a list of structures and optional training, validation and test sets.
 
@@ -26,6 +26,7 @@ class Structures:
             test_set (list of ASE Atoms objects): List of structures to be used as the test set.
                 Defaults to an empty list.
             sisyphus_set (list of ASE Atoms objects): List of structures to be used as input structures for Sisyphus searches.
+            minimized_set (list of ASE Atoms objects): Container for minimized structures.
                 Defaults to an empty list.
         """
 
@@ -34,6 +35,7 @@ class Structures:
         self._validation_set = validation_set
         self._test_set = test_set
         self._sisyphus_set = sisyphus_set
+        self._minimized_set = minimized_set 
 
     @property
     def structures(self):
@@ -94,6 +96,19 @@ class Structures:
     @sisyphus_set.deleter
     def sisyphus_set(self):
         del self._sisyphus_set
+
+    @property
+    def minimized_set(self):
+        return self._minimized_set
+
+    @minimized_set.setter
+    def minimized_set(self, new_structures):
+        self._minimized_set = new_structures
+
+    @minimized_set.deleter
+    def minimized_set(self):
+        del self._minimized_set
+
 
     def find_unique_structures(self, input_structures=None, replace_structures=False):
         """ Find a set of unique structures by some criterium (to be defined) from a set of `input_structures`.
