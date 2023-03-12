@@ -2,7 +2,7 @@
 
 This module defines the central object in the CAMUS algorithm.
 It should be able to let several other classes to communicate with each other.
-Planned classes: Structures, ML, Sisyphus, DFT
+Planned classes: Structures, ML, Sisyphus, DFT, Scheduler
 
 """
 
@@ -18,7 +18,7 @@ class Camus:
         The methods in this class should allow an interface between the `name` classes.
         """
 
-        self.Cstructures = Structures(structures)
+        self.Cstructures = Structures(structures=structures)
         self.Csisyphus = Sisyphus(artn_parameters, lammps_parameters, sisyphus_parameters)
 
     def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters={}, specorder=None, atom_style='atomic'):
