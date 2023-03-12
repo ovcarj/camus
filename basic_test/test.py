@@ -58,10 +58,18 @@ print('Wrote non-standard LAMMPS input to $CAMUS_LAMMPS_DATA_DIR.')
 
 camus_object.Csisyphus.lammps_parameters = {}
 
-test_directory = os.path.join(os.environ.get('CAMUS_SISYPHUS_DATA_DIR'), 'sisyphus_test_dir')
-camus_object.create_sisyphus_calculation(target_directory=test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
+sisyphus_test_directory = os.path.join(os.environ.get('CAMUS_SISYPHUS_DATA_DIR'), 'sisyphus_test_dir')
+camus_object.create_sisyphus_calculation(target_directory=sisyphus_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
 
-print(f'Created files for a Sisyphus calculation in {test_directory}')
+print(f'Created files for a Sisyphus calculation in {sisyphus_test_directory}')
+
+camus_object.Csisyphus.lammps_parameters = {}
+
+minimization_test_directory = os.path.join(os.environ.get('CAMUS_LAMMPS_MINIMIZATION_DIR'), 'minimization_test_dir')
+camus_object.create_lammps_minimization(target_directory=minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
+
+print(f'Created files for a LAMMPS minimization in {minimization_test_directory}')
+
 
 print('Test OK')
 
