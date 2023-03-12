@@ -127,7 +127,7 @@ class Sisyphus:
         with open(os.path.join(target_directory, 'artn.in'), 'w') as f:
             f.write(artn_in_content)
 
-    def set_lammps_parameters(self, input_parameters={}, path_to_model=None, specorder=None, initial_sisyphus=False, **kwargs):
+    def set_lammps_parameters(self, input_parameters={}, path_to_model=None, specorder=None, initial_sisyphus=False, minimization=False, **kwargs):
         """ Method that sets parameters to be written in lammps.in to self._lammps_parameters dictionary.
 
         Parameters:
@@ -135,8 +135,9 @@ class Sisyphus:
             If `input_parameters` is not given, default parameters for a basic ARTn calculation will be used.
             `path to model`: path to the ML model to be used. If not specified, a default hardcoded directory will be used.
             `specorder`: order of atomic species. If not specified, a default hardcoded ordering will be used.
-            `initial_sisyphus`: if True, a standard lammps.in file for a calculation of potential energy is created.
+            `initial_sisyphus`: if True, standard parameters for a lammps.in file for a calculation of potential energy are set.
                                 It is necessary to perform this calculation to perform the Sisyphus search.
+            `minimization`: if True, standard parameters for a lammps.in file for minimization are set.
 
             WARNING: not specifying the above parameters may easily lead to wrong results.
 
@@ -181,6 +182,21 @@ class Sisyphus:
             'run': '0'
              }
 
+        # Default parameters for a structure minimization
+        default_minimization = {
+            'units': 'metal',
+            'dimension': '3',
+            'boundary': 'p p p',
+            'atom_style': 'atomic',
+            'atom_modify': 'map array',
+            'read_data': 'lammps.data',
+            'pair_style': 'allegro',
+            'pair_coeff': f'* * {path_to_model} {specorder}',
+            'min_style': 'fire',
+            'minimize': '1.0e-4 1.0e-6 100 1000',
+            'dump': 'minimizeDump all custom 1 minimized.xyz type x y z fx fy fz',
+            'run': 0}
+
 
         # If input parameters are not given, use default_parameters
         if not input_parameters:
@@ -189,6 +205,10 @@ class Sisyphus:
         # If initial_sisyphus=True, use default_initial_sisyphus parameters
         if initial_sisyphus:
             input_parameters = default_initial_sisyphus
+
+        # If minimization=True, use default_minimization parameters
+        elif minimization:
+            input_parameters = default_minimization
 
         # Set self._lammps_parameters
         self._lammps_parameters = input_parameters
