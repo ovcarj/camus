@@ -7,8 +7,10 @@ Planned classes: Structures, ML, Sisyphus, DFT, Scheduler
 """
 
 import os
+
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
+from camus.scheduler import Slurm
 
 class Camus:
 
@@ -20,6 +22,7 @@ class Camus:
 
         self.Cstructures = Structures(structures=structures)
         self.Csisyphus = Sisyphus(artn_parameters, lammps_parameters, sisyphus_parameters)
+        self.Cslurm = Slurm()
 
     def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters={}, specorder=None, atom_style='atomic'):
         """
