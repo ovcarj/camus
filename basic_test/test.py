@@ -70,6 +70,11 @@ camus_object.create_lammps_minimization(target_directory=minimization_test_direc
 
 print(f'Created files for a LAMMPS minimization in {minimization_test_directory}')
 
+camus_object.Csisyphus.lammps_parameters = {}
+batch_minimization_test_directory = os.path.join(os.environ.get('CAMUS_LAMMPS_MINIMIZATION_DIR'), 'batch_minimization_test_dir')
+camus_object.create_batch_minimization(base_directory=batch_minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
+
+print(f'Created files for a batch LAMMPS minimization in {batch_minimization_test_directory}')
 
 print('Test OK')
 

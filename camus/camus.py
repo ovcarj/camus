@@ -122,3 +122,33 @@ class Camus:
 
         # Write the lammps.data file
         self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
+
+    def create_batch_minimization(self, base_directory, specorder, input_structures=None, prefix='minimization', schedule=True):
+        """
+         Method that creates a number of `input_structures` directories in `base_directory` with the names
+         `prefix`_(# of structure) that contains all files necessary to minimize a structure. 
+         If `input_structures` is not given, self.Cstructures.structures is used.
+ 
+         Parameters:
+             base_directory: directory in which to create the directories for LAMMPS minimizations
+             specorder: order of atom types in which to write the LAMMPS data file
+             input_structures: list of ASE Atoms object which should be minimized 
+             prefix: prefix for the names of the minimization directories 
+             schedule: if True, write a submission script to each directory
+ 
+         """
+
+        # Set default input_structures to self.Cstructures.structures
+        if input_structures is None:
+             input_structures = self.Cstructures.structures
+
+        # Create base directory if it does not exist
+        if not os.path.exists(base_directory):
+            os.makedirs(base_directory)
+
+        # Write the minimization files 
+        for i, structure in enumerate(input_structures):
+            target_directory = os.path.join(base_directory, f'{prefix}_{i}')
+            self.create_lammps_minimization(input_structure=structure, target_directory=target_directory, specorder=specorder)
+            if schedule:
+                self.Cscheduler.write_submission_script(target_directory=target_directory)
