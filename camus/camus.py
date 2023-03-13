@@ -7,16 +7,19 @@ Planned classes: Structures, ML, Sisyphus, DFT, Scheduler
 """
 
 import os
+import importlib
 import subprocess
 import time
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
-from camus.scheduler import Slurm
+
+scheduler_module = importlib.import_module('camus.scheduler')
 
 class Camus:
 
-    def __init__(self, structures=[], artn_parameters={}, lammps_parameters={}, sisyphus_parameters={}):
+    def __init__(self, structures=[], artn_parameters={}, lammps_parameters={}, sisyphus_parameters={},
+            scheduler='Slurm'):
         """
         Initializes a new Camus object, whose attributes `self.Cname` are instances of `name` classes.
         The methods in this class should allow an interface between the `name` classes.
@@ -24,7 +27,9 @@ class Camus:
 
         self.Cstructures = Structures(structures=structures)
         self.Csisyphus = Sisyphus(artn_parameters, lammps_parameters, sisyphus_parameters)
-        self.Cslurm = Slurm()
+
+        scheduler_class = getattr(scheduler_module, scheduler)
+        self.Cscheduler = scheduler_class()
 
     def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters={}, specorder=None, atom_style='atomic'):
         """
