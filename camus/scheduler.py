@@ -5,6 +5,9 @@ This module defines everything related to handling cluster scheduling.
 """
 
 import os
+import subprocess
+import time
+
 from abc import ABC, abstractmethod
 
 class Scheduler(ABC):
@@ -19,6 +22,8 @@ class Scheduler(ABC):
         """
 
         self._scheduler_parameters = scheduler_parameters
+        self.job_ids = []
+        self.working_directories = []
 
     @abstractmethod
     def set_scheduler_parameters(self, **kwargs):
@@ -98,7 +103,7 @@ class Slurm(Scheduler):
         if not os.path.exists(target_directory):
             os.makedirs(target_directory)
 
-        # Write the sisyphus.sh file to the target directory
+        # Write the submission script to the target directory
         with open(os.path.join(target_directory, filename), 'w') as f:
             f.write(f"""#!/bin/bash
 #SBATCH --partition={self.scheduler_parameters['partition']}
@@ -122,7 +127,24 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
 {self.scheduler_parameters['run_command']}
 """)
 
-    def run_submission_script(self, filename):
-        ...
-
+    def run_submission_script(self, job_filename='sub.sh'):
+        # Submit job, get job ID and remember working directory
+        output = subprocess.check_output(f'sbatch {job_filename}', shell=True)
+        job_id = int(output.split()[-1])
+        self.job_ids.append(job_id)
+        self.working_directories.append(os.getcwd())
+    
+        # Check job status (this will soon be moved to Camus for specialized uses)
+        while len(self.job_ids) > 0:
+            for job_id in self.job_ids:
+                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+                if len(result.strip()) == 0:
+                    print(f'Job {job_id} has completed')
+                    self.job_ids.remove(job_id)
+                else:
+                    print(f'Job {job_id} is still running')
+    
+            # Wait for some time before checking status again
+            time.sleep(5)
+    
 

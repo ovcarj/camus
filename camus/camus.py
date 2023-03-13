@@ -7,6 +7,8 @@ Planned classes: Structures, ML, Sisyphus, DFT, Scheduler
 """
 
 import os
+import subprocess
+import time
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
