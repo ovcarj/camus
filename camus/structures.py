@@ -110,22 +110,19 @@ class Structures:
         del self._minimized_set
 
 
-    def find_unique_structures(self, input_structures=None, replace_structures=False):
-        """ Find a set of unique structures by some criterium (to be defined) from a set of `input_structures`.
-        If `input_structures` is not given, self.structures will be used.
+    def find_unique_structures(self, candidate_set, reference_set=None, threshold=0.95):
+        """ WILL BE UPDATED SOON. Find a set of unique structures by some criterium (to be defined) from a set of `input_structures`.
+        If `reference_set` is not given, self.structures will be used.
 
         If replace_structures=True, replace the current structures in the Camus object with the unique ones.
         Otherwise, return a set of unique structures.
         """
-        if input_structures is None:
-            input_structures = self.structures
+        if reference_set is None:
+            reference_set = self.structures
 
-        unique_structures = input_structures[0] #for testing purposes
+        unique_structures = reference_set[0] #for testing purposes
 
-        if replace_structures:
-            self.structures = unique_structures
-        else:
-            return unique_structures
+        return unique_structures
 
     def create_datasets(self, input_structures=None, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
         """ Separates the structures from `input_structures` into training, validation and test sets.
