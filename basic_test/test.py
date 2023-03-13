@@ -3,7 +3,7 @@ import os
 from ase.io import read
 from camus import camus
 
-structs = read('test.traj', index='0:100')
+structs = read('test.traj', index='0:10')
 
 camus_object = camus.Camus(structures=structs)
 
