@@ -3,7 +3,7 @@ import os
 from ase.io import read
 from camus import camus
 
-structs = read('test.traj', index='0:10')
+structs = read('test.traj', index='0:20')
 
 camus_object = camus.Camus(structures=structs)
 
@@ -77,6 +77,3 @@ camus_object.create_batch_minimization(base_directory=batch_minimization_test_di
 print(f'Created files for a batch LAMMPS minimization in {batch_minimization_test_directory}')
 
 print('Test OK')
-
-
-

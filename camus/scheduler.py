@@ -145,14 +145,18 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
                 'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': 0}
 
 
-    def check_job_status(self, job_id, max_queuetime, max_runtime):
+    def check_job_status(self, job_id, max_queuetime, max_runtime, squeue_result=None):
         """ Checks whether a job is queueing, running or failed.
             If max_queuetime or max_runtime (in seconds) has ellapsed, cancel the job.
+            Result of squeue -h -j [job_id] may be already passed to avoid jobs finishing as this method is called.
         """
 
         current_time = time.time()
 
-        result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+        if squeue_result is None:
+            result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+        else: result = squeue_result
+
         self.jobs_info[f'{job_id}']['job_status'] = result.strip().split()[4].decode('utf-8')
 
         # Job in queue
