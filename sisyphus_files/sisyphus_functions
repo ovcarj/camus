@@ -139,17 +139,17 @@ move_starting_point () {
 
     tail -n+3 $ACCEPTED_FILE | awk '{$1=$5=$6=$7=""; print $0}' | sort -k4 -n | awk '{$4=""; print $0}' > minima_coords.tmp
 
-    grep "Atoms" conf.sw -B10000 -A1 > top_of_data.tmp
+    grep "Atoms" lammps.data -B10000 -A1 > top_of_data.tmp
 
-    ATOMS_NUMBER=$(grep "atoms" conf.sw | awk {'print $1'})
-    grep "Atoms" conf.sw -A$(echo "$ATOMS_NUMBER + 2" | bc -l) | tail -$ATOMS_NUMBER | awk '{print $1" " $2}' > two_columns.tmp
+    ATOMS_NUMBER=$(grep "atoms" lammps.data | awk {'print $1'})
+    grep "Atoms" lammps.data -A$(echo "$ATOMS_NUMBER + 2" | bc -l) | tail -$ATOMS_NUMBER | awk '{print $1" " $2}' > two_columns.tmp
 
     paste two_columns.tmp minima_coords.tmp > coords_for_data.tmp
 
     cat coords_for_data.tmp >> top_of_data.tmp
 
-    mv conf.sw ${dE_initial_threshold}_${dE_final_threshold}_conf_$(echo "$minima_counter - 1" | bc -l).sw
-    mv top_of_data.tmp conf.sw
+    mv lammps.data ${dE_initial_threshold}_${dE_final_threshold}_lammps_$(echo "$minima_counter - 1" | bc -l).data
+    mv top_of_data.tmp lammps.data
     rm *.tmp
 
 }
@@ -199,7 +199,7 @@ initialize_files () {
 
 cleanup_minima () {
 
-    rm -f *minimum_* *saddlepoint_* *conf_*.sw
+    rm -f *minimum_* *saddlepoint_* *lammps_*.data
 
 }
 
