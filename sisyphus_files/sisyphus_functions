@@ -142,9 +142,9 @@ move_starting_point () {
     grep "Atoms" lammps.data -B10000 -A1 > top_of_data.tmp
 
     ATOMS_NUMBER=$(grep "atoms" lammps.data | awk {'print $1'})
-    grep "Atoms" lammps.data -A$(echo "$ATOMS_NUMBER + 2" | bc -l) | tail -$ATOMS_NUMBER | awk '{print $1" " $2}' > two_columns.tmp
+    grep "Atoms" lammps.data -A$(echo "$ATOMS_NUMBER + 2" | bc -l) | tail -$ATOMS_NUMBER | awk '{NF=NF-3; print}' > columns.tmp
 
-    paste two_columns.tmp minima_coords.tmp > coords_for_data.tmp
+    paste columns.tmp minima_coords.tmp > coords_for_data.tmp
 
     cat coords_for_data.tmp >> top_of_data.tmp
 

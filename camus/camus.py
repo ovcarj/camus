@@ -228,7 +228,7 @@ class Camus:
             # Wait for some time before checking status again
             time.sleep(10)
 
-        # Check if jobs with job_status == 'F' exited correctly, read the minimized structure
+        # Check if jobs with job_status == 'FINISHED' exited correctly, read the minimized structure
         # energies & forces, store the structures in self.Cstructures.minimization_set
 
         for job_id, job_info in self.Cscheduler.jobs_info.items():
