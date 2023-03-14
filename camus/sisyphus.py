@@ -147,7 +147,7 @@ class Sisyphus:
         """
 
         if path_to_model is None:
-            path_to_model = '/storage/perovskites/allegro/deploys/model0'
+            path_to_model = '/storage/perovskites/allegro/deploys/model_gen1/model'
         if specorder is None:
             specorder = 'Br I Cs Pb'
 
