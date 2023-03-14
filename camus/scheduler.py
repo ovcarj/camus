@@ -23,7 +23,9 @@ class Scheduler(ABC):
 
         self._scheduler_parameters = scheduler_parameters
         self.job_ids = []
-        self.working_directories = []
+        
+        # Meant to be a flexible dictionary, e.g. in the form {'job_id': {working_directory: ..., job_status: ..., ...}}
+        self.jobs_info = {} 
 
     @abstractmethod
     def set_scheduler_parameters(self, **kwargs):
@@ -128,23 +130,62 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
 """)
 
     def run_submission_script(self, job_filename='sub.sh'):
-        # Submit job, get job ID and remember working directory
+        # Submit job
         output = subprocess.check_output(f'sbatch {job_filename}', shell=True)
+
+        # Get job_id, cwd and submission time
         job_id = int(output.split()[-1])
         self.job_ids.append(job_id)
-        self.working_directories.append(os.getcwd())
-    
-        # Check job status (this will soon be moved to Camus for specialized uses)
-        while len(self.job_ids) > 0:
-            for job_id in self.job_ids:
-                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
-                if len(result.strip()) == 0:
-                    print(f'Job {job_id} has completed')
-                    self.job_ids.remove(job_id)
-                else:
-                    print(f'Job {job_id} is still running')
-    
-            # Wait for some time before checking status again
-            time.sleep(5)
-    
+        cwd = os.getcwd()
+        submission_time = time.time()
+
+        # Initialize self.jobs_info dictionary
+
+        self.jobs_info[f'{job_id}'] = {'directory': cwd, 'job_status': 'I', 
+                'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': 0}
+
+
+    def check_job_status(self, job_id, max_queuetime, max_runtime):
+        """ Checks whether a job is queueing, running or failed.
+            If max_queuetime or max_runtime (in seconds) has ellapsed, cancel the job.
+        """
+
+        current_time = time.time()
+
+        result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+        self.jobs_info[f'{job_id}']['job_status'] = result.strip().split()[4].decode('utf-8')
+
+        # Job in queue
+        if self.jobs_info[f'{job_id}']['job_status'] == 'PD':
+
+            self.jobs_info[f'{job_id}']['queue_time'] = current_time - self.jobs_info[f'{job_id}']['submission_time']
+
+            # Job waited too long
+            if self.jobs_info[f'{job_id}']['queue_time'] > max_queuetime:
+                self.jobs_info[f'{job_id}']['job_status'] = 'MAX_QUEUE_TIME_ELLAPSED'
+                self.job_ids.remove(job_id)
+                subprocess.run(["scancel", job_id])
+
+        # Job failed for some reason
+        elif self.jobs_info[f'{job_id}']['job_status'] in ['BF', 'CA', 'DL', 'F', 'NF', 'PR', 'ST', 'TO']:
+            self.job_ids.remove(job_id)
+            subprocess.run(["scancel", job_id])
+
+        # Job running
+        elif self.jobs_info[f'{job_id}']['job_status'] == 'R':
+
+            # Check if this is the first instance of seeing the job running
+            if self.jobs_info[f'{job_id}']['run_time'] == 0:
+                self.jobs_info[f'{job_id}']['start_time'] = current_time
+
+            self.jobs_info[f'{job_id}']['run_time'] = current_time - self.jobs_info[f'{job_id}']['start_time']
+
+            # Job running too long
+            if self.jobs_info[f'{job_id}']['queue_time'] > max_runtime:
+                self.jobs_info[f'{job_id}']['job_status'] = 'MAX_RUN_TIME_ELLAPSED'
+                self.job_ids.remove(job_id)
+                subprocess.run(["scancel", job_id])
+
+        # Transient job status - hopefully nothing special is happening
+        else: pass
 

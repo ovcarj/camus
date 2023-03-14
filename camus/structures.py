@@ -153,7 +153,7 @@ class Structures:
         self.validation_set = structures[num_train:num_train+num_val]
         self.test_set = structures[num_train+num_val:]
 
-    def create_sisyphus_set(self, input_structures=None, mode='random', indices=None, number_of_structures=100):
+    def create_sisyphus_set(self, input_structures=None, mode='random', indices=None, number_of_structures=5):
         """ Creates a `number_of_structures` of structures to be used as input structures for Sisyphus searches.
 
         If the optional list of `input_structures` is not provided, use the Structures object's own `structures`

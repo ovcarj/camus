@@ -10,9 +10,12 @@ import os
 import importlib
 import subprocess
 import time
+import glob
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
+
+from ase import Atoms
 
 scheduler_module = importlib.import_module('camus.scheduler')
 
@@ -23,6 +26,7 @@ class Camus:
         """
         Initializes a new Camus object, whose attributes `self.Cname` are instances of `name` classes.
         The methods in this class should allow an interface between the `name` classes.
+
         """
 
         self.Cstructures = Structures(structures=structures)
@@ -123,7 +127,7 @@ class Camus:
         # Write the lammps.data file
         self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
-    def create_batch_minimization(self, base_directory, specorder, input_structures=None, prefix='minimization', schedule=True):
+    def create_batch_minimization(self, base_directory, specorder, input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh'):
         """
          Method that creates a number of `input_structures` directories in `base_directory` with the names
          `prefix`_(# of structure) that contains all files necessary to minimize a structure. 
@@ -135,6 +139,7 @@ class Camus:
              input_structures: list of ASE Atoms object which should be minimized 
              prefix: prefix for the names of the minimization directories 
              schedule: if True, write a submission script to each directory
+             job_filename: name of the submission script
  
          """
 
@@ -146,9 +151,75 @@ class Camus:
         if not os.path.exists(base_directory):
             os.makedirs(base_directory)
 
+        # Special case of single input structure:
+        if isinstance(input_structures, Atoms): input_structures = [input_structures]
+
         # Write the minimization files 
         for i, structure in enumerate(input_structures):
             target_directory = os.path.join(base_directory, f'{prefix}_{i}')
             self.create_lammps_minimization(input_structure=structure, target_directory=target_directory, specorder=specorder)
             if schedule:
-                self.Cscheduler.write_submission_script(target_directory=target_directory)
+                self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
+
+    def run_batch_minimization(self, base_directory, save_traj=True, traj_filename='minimized_structures.traj',
+            max_runtime=600, max_queuetime=3600, job_filename='sub.sh'):
+        """
+         Intended to be used in conjuction with create_batch_minimization.
+         Method that runs all minimizations in subdirectories of `base_directory` and stores the minimized
+         structures in self.Cstructures.minimized_set. 
+         If `save_traj` is given, a `traj_filename` ASE trajectory file is saved to `base_directory`.
+         It is assumed the subdirectories names end with a structure index {_1, _2, ...} so that the ordering
+         of structures created by create_batch_minimization is preserved.
+ 
+         Parameters:
+             base_directory: directory in which the subdirectories with minimization files are given
+             save_traj: if True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
+             max_runtime [seconds]: if a calculation is still running after max_runtime, cancel and disregard it
+             max_queuetime [seconds]: if calculations are still queueing after max_queuetime, cancel and disregard it
+             job_filename: name of the submission script
+
+         """
+
+        # cd to base_directory
+        os.chdir(base_directory)
+
+        # Get a list of all the subdirectories sorted by the structure index
+        subdirectories = sorted(glob.glob('*'), key=lambda x: int(x.split('_')[-1]))
+        
+        # Initialize self.Cstructures.minimized_set with None
+        self.Cstructures.minimized_set = [None] * len(subdirectories)
+
+        # cd to the subdirectories, submit jobs and remember the structure_index 
+        for subdirectory in subdirectories:
+
+            os.chdir(subdirectory)
+            self.Cscheduler.run_submission_script(job_filename=job_filename)
+            job_id = self.Cscheduler.job_ids[-1]
+
+            cwd = os.getcwd()
+            structure_index = int(cwd.split('_')[-1])
+
+            self.Cscheduler.jobs_info[f'{job_id}']['structure_index'] = structure_index
+
+            os.chdir(base_directory)
+
+        # Check job status 
+        while len(self.Cscheduler.job_ids) > 0:
+
+            for job_id in self.Cscheduler.job_ids:
+
+                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+
+                # Job completed (not running anymore)
+                if len(result.strip()) == 0:
+
+                    print(f'Job {job_id} has completed')
+                    self.Cscheduler.job_ids.remove(job_id)
+                    self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'F'
+
+                # Job still exists
+                else:
+                    self.Cscheduler.check_job_status(job_id, max_queuetime, max_runtime)
+
+            # Wait for some time before checking status again
+            time.sleep(10)
