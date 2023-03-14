@@ -92,7 +92,7 @@ class Camus:
             self.Csisyphus.set_sisyphus_parameters
         self.Csisyphus.write_sisyphus_script(target_directory=target_directory)
 
-    def create_lammps_minimization(self, input_structure=None, target_directory=None, lammps_parameters={}, specorder=None, atom_style='atomic'):
+    def create_lammps_minimization(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
         """
         Convenience method that writes all necessary files to minimize an `input_structure` with LAMMPS. 
         If `input_structure` is not given, self.Cstructures.structures[0] is used.
@@ -129,7 +129,7 @@ class Camus:
         # Write the lammps.data file
         self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
-    def create_batch_minimization(self, base_directory, specorder, input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh'):
+    def create_batch_minimization(self, base_directory, specorder, input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic'):
         """
          Method that creates a number of `input_structures` directories in `base_directory` with the names
          `prefix`_(# of structure) that contains all files necessary to minimize a structure (with LAMMPS). 
@@ -159,12 +159,12 @@ class Camus:
         # Write the minimization files 
         for i, structure in enumerate(input_structures):
             target_directory = os.path.join(base_directory, f'{prefix}_{i}')
-            self.create_lammps_minimization(input_structure=structure, target_directory=target_directory, specorder=specorder)
+            self.create_lammps_minimization(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
             if schedule:
                 self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
     def run_batch_minimization(self, base_directory, specorder=['Br', 'I', 'Cs', 'Pb'], prefix='minimization', save_traj=True, 
-            traj_filename='minimized_structures.traj', max_runtime=600, max_queuetime=3600, job_filename='sub.sh'):
+            traj_filename='minimized_structures.traj', max_runtime=1800, max_queuetime=3600, job_filename='sub.sh'):
         """
          Intended to be used in conjuction with create_batch_minimization.
          Method that runs all minimizations in subdirectories of `base_directory` and stores the minimized
