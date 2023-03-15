@@ -12,11 +12,13 @@ import subprocess
 import time
 import glob
 import numpy as np
+import pickle
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
 
 from ase import Atoms
+from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import write
 from ase.io.lammpsrun import read_lammps_dump
 
@@ -37,6 +39,12 @@ class Camus:
 
         scheduler_class = getattr(scheduler_module, scheduler)
         self.Cscheduler = scheduler_class()
+
+        # Initialize self.sisyphus_dictionary which will contain all information on the batch Sisyphus calculations
+        self.sisyphus_dictionary = {}
+
+        # Initialize self.Cstructures.transitions for batch Sisyphus calculations
+        self.Cstructures.transitions = []
 
     def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters={}, specorder=None, atom_style='atomic'):
         """
@@ -163,6 +171,220 @@ class Camus:
                             self.Cscheduler.set_scheduler_parameters(run_command=run_command)
                             self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
+    def run_batch_sisyphus(self, base_directory, specorder, prefix='sis', 
+            max_runtime=120000, max_queuetime=10800, job_filename='sub.sh'):
+        """
+        TODO: run_batch_sisyphus and run_batch_minimization could easily be split into 2-3 methods (e.g. batch_run, analyze results, etc...) Keeping it as it is for now because it works for fast calculations, but could be an issue for long ones.
+
+        Intended to be used in conjuction with create_batch_sisyphus.
+        Method that runs all Sisyphus runs in subdirectories of `base_directory` and stores the found
+        transitions in self.Cstructures.transitions . 
+        If `save_transitions` is True, a ASE trajectory files are saved to `base_directory/transitions`.
+        It is assumed the subdirectories names are as given in create_batch_sisyphus.
+ 
+        Parameters:
+            base_directory: directory in which the subdirectories with minimization files are given
+            specorder: names of atom types in the LAMMPS minimization
+            prefix: prefix of the subdirectory names
+            max_runtime [seconds]: if a calculation is still running after max_runtime, cancel and disregard it
+            max_queuetime [seconds]: if calculations are still queueing after max_queuetime, cancel and disregard it
+            job_filename: name of the submission script
+
+        """
+        # cd to base_directory
+        os.chdir(base_directory)
+
+        # Make directories to store transitions
+        os.mkdir('minima')
+        os.mkdir('saddlepoints')
+        os.mkdir('transitions')
+        os.mkdir('transitions/passed')
+        os.mkdir('transitions/failed')
+
+        minima_directory = os.path.abspath('minima')
+        saddlepoints_directory = os.path.abspath('saddlepoints')
+        transitions_directory = os.path.abspath('transitions')
+        transitions_passed_directory = os.path.abspath('transitions/passed')
+        transitions_failed_directory = os.path.abspath('transitions/failed')
+
+        # Get a list of all the subdirectories sorted by the structure index, transition energy index, delta_e_final index, calc#
+        subdirectories = sorted(glob.glob(f'{prefix}_*'), key=lambda x: [int(i) for i in x.split('_')[1:]])
+        
+        # cd to the subdirectories, submit jobs and remember the calculation label 
+        for calculation_index, subdirectory in enumerate(subdirectories):
+
+            os.chdir(subdirectory)
+            self.Cscheduler.run_submission_script(job_filename=job_filename)
+            job_id = self.Cscheduler.job_ids[-1]
+
+            cwd = os.getcwd()
+            cwd_name = os.path.basename(cwd)
+            _, calculation_label = cwd_name.split('_', 1)
+
+            self.Cscheduler.jobs_info[f'{job_id}']['calculation_index'] = calculation_index
+            self.Cscheduler.jobs_info[f'{job_id}']['calculation_label'] = calculation_label
+
+            os.chdir(base_directory)
+
+        # Check job status 
+        while len(self.Cscheduler.job_ids) > 0:
+
+            for job_id in self.Cscheduler.job_ids:
+
+                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+
+                # Job completed (not running anymore)
+                if len(result.strip()) == 0:
+
+                    print(f'Job {job_id} has completed')
+                    self.Cscheduler.job_ids.remove(job_id)
+                    self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
+
+                # Job still exists
+                else:
+                    self.Cscheduler.check_job_status(job_id, max_queuetime, max_runtime, result)
+
+            # Wait for some time before checking status again
+            time.sleep(10)
+
+        # Check if jobs with job_status == 'FINISHED' exited correctly, read the transitions
+        # energies & forces, store the structures in self.Cstructures.minimization_set
+
+        for job_id, job_info in self.Cscheduler.jobs_info.items():
+
+            if job_info['job_status'] == 'FINISHED':
+
+                calculation_index = job_info['calculation_index']
+                calculation_label = job_info['calculation_label']
+
+                self.sisyphus_dictionary[f'{calculation_label}'] = {}
+ 
+                self.sisyphus_dictionary[f'{calculation_label}']['activation_e_forward'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['delta_e_final_top'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['delta_e_final_initial'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'] = []
+                self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'] = [] 
+                self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'] = []
+                self.sisyphus_dictionary[f'{calculation_label}']['minima_energies'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['all_energies'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_energies'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['basin_counters'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['directory'] = None
+
+                directory = job_info['directory']
+                self.sisyphus_dictionary[f'{calculation_label}']['directory'] = directory
+
+                os.chdir(directory)
+
+                sisyphus_log_file = os.path.join(directory, f'{prefix}_{calculation_label}_SISYPHUS.log')
+
+                # Check if the SISYPHUS.log file was generated, parse results
+
+                if os.path.exists(sisyphus_log_file):
+                    with open(sisyphus_log_file) as f:
+                        sisyphus_log_lines = f.readlines()
+                        last_log_line = sisyphus_log_lines[-1]
+
+                    if('exceeded while climbing up the hill.' in last_log_line):
+                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'FAILED_CLIMB'
+                        self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'FAILED_CLIMB'
+
+                    elif('exceeded while going down the hill.' in last_log_line):
+                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'FAILED_DESCEND'
+                        self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'FAILED_DESCEND'
+
+                    elif('MSG_END' in last_log_line):
+                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'PASSED'
+                        self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'PASSED'
+
+                        last_log_line_split = last_log_line.split()
+                        self.sisyphus_dictionary[f'{calculation_label}']['activation_e_forward'] = float(last_log_line_split[3])
+                        self.sisyphus_dictionary[f'{calculation_label}']['delta_e_final_top'] = float(last_log_line_split[6])
+                        self.sisyphus_dictionary[f'{calculation_label}']['delta_e_final_initial'] = float(last_log_line_split[9])
+
+                    else:
+                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
+                        self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'CALCULATION_FAILED'
+
+                    minima_files = sorted(glob.glob('*minimum*xyz'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+                    saddlepoint_files = sorted(glob.glob('*saddlepoint*xyz'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
+
+                    if len(minima_files) > 0:
+
+                        minima_energies_file = glob.glob('*minima_energies*')[0]
+                        saddlepoint_energies_file = glob.glob('*saddlepoint_energies*')[0]
+                        all_energies_file = glob.glob('*all_energies*')[0]
+                        basin_counters_file = glob.glob('*basin_counters*')[0]
+
+                        self.sisyphus_dictionary[f'{calculation_label}']['minima_energies'] = np.frombuffer(np.loadtxt(minima_energies_file))
+                        self.sisyphus_dictionary[f'{calculation_label}']['all_energies'] = np.frombuffer(np.loadtxt(all_energies_file))
+                        self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_energies'] = np.frombuffer(np.loadtxt(saddlepoint_energies_file))
+                        self.sisyphus_dictionary[f'{calculation_label}']['basin_counters'] = np.frombuffer(np.loadtxt(basin_counters_file))
+                    
+                        for i, minimum_filename in enumerate(minima_files):
+
+                            saddlepoint_filename = saddlepoint_files[i]
+                            minimum_energy = self.sisyphus_dictionary[f'{calculation_label}']['minima_energies'][i]
+                            saddlepoint_energy = self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_energies'][i]
+
+                            # This will be moved to a method in Structures, for now code repeats for minimum and saddlepoint
+                            with open(minimum_filename) as f:
+                                lines = f.readlines()
+
+                            cell=np.array(lines[1].strip().split(' ')[1:10], dtype='float').reshape(3, 3, order='F')
+                            positions = np.loadtxt(minimum_filename, skiprows=2, usecols=(1, 2, 3))
+                            forces = np.loadtxt(minimum_filename, skiprows=2, usecols=(4, 5, 6))
+                            
+                            atom_types = []
+
+                            for line in lines[2:]:
+                                atom_id = int(line.strip()[0])
+                                atom_types.insert(-1, specorder[atom_id - 1])
+
+                            minimum_atoms=Atoms(symbols=atom_types, positions=positions, pbc=True, cell=cell)
+                            minimum_atoms.calc = SinglePointCalculator(minimum_atoms, energy=minimum_energy, forces=forces)
+
+                            with open(saddlepoint_filename) as f:
+                                lines = f.readlines()
+
+                            cell=np.array(lines[1].strip().split(' ')[1:10], dtype='float').reshape(3, 3, order='F')
+                            positions = np.loadtxt(saddlepoint_filename, skiprows=2, usecols=(1, 2, 3))
+                            forces = np.loadtxt(saddlepoint_filename, skiprows=2, usecols=(4, 5, 6))
+                            
+                            atom_types = []
+
+                            for line in lines[2:]:
+                                atom_id = int(line.strip()[0])
+                                atom_types.insert(-1, specorder[atom_id - 1])
+
+                            saddlepoint_atoms=Atoms(symbols=atom_types, positions=positions, pbc=True, cell=cell)
+                            saddlepoint_atoms.calc = SinglePointCalculator(saddlepoint_atoms, energy=saddlepoint_energy, forces=forces)
+
+                            self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].append(minimum_atoms)
+                            self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].append(saddlepoint_atoms)
+                            self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'].append(minimum_atoms)
+                            self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'].append(saddlepoint_atoms)
+
+                        # Write transitions
+                        if self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED':
+                            write(os.path.join(transitions_passed_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
+                        elif 'FAILED_' in self.sisyphus_dictionary[f'{calculation_label}']['status']:
+                            write(os.path.join(transitions_failed_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
+
+                        write(os.path.join(minima_directory, f'{calculation_label}_m.traj'), self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'])
+                        write(os.path.join(saddlepoints_directory, f'{calculation_label}_s.traj'), self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'])
+                    
+                    else:
+                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'NO_STRUCTURES_WRITTEN'
+                        self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'NO_STRUCTURES_WRITTEN'
+
+                else:
+                    self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
+                    self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'CALCULATION_FAILED'
+
+        with open(os.path.join(f'{base_directory}', 'sisyphus_dictionary.pkl'), 'wb+') as f:
+            pickle.dump(self.sisyphus_dictionary, f)
+
     def create_lammps_minimization(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
         """
         Convenience method that writes all necessary files to minimize an `input_structure` with LAMMPS. 
@@ -202,19 +424,19 @@ class Camus:
 
     def create_batch_minimization(self, base_directory, specorder, input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic'):
         """
-         Method that creates a number of `input_structures` directories in `base_directory` with the names
-         `prefix`_(# of structure) that contains all files necessary to minimize a structure (with LAMMPS). 
-         If `input_structures` is not given, self.Cstructures.structures is used.
+        Method that creates a number of `input_structures` directories in `base_directory` with the names
+        `prefix`_(# of structure) that contains all files necessary to minimize a structure (with LAMMPS). 
+        If `input_structures` is not given, self.Cstructures.structures is used.
  
-         Parameters:
-             base_directory: directory in which to create the directories for LAMMPS minimizations
-             specorder: order of atom types in which to write the LAMMPS data file
-             input_structures: list of ASE Atoms object which should be minimized 
-             prefix: prefix for the names of the minimization directories 
-             schedule: if True, write a submission script to each directory
-             job_filename: name of the submission script
+        Parameters:
+            base_directory: directory in which to create the directories for LAMMPS minimizations
+            specorder: order of atom types in which to write the LAMMPS data file
+            input_structures: list of ASE Atoms object which should be minimized 
+            prefix: prefix for the names of the minimization directories 
+            schedule: if True, write a submission script to each directory
+            job_filename: name of the submission script
  
-         """
+        """
 
         # Set default input_structures to self.Cstructures.structures
         if input_structures is None:
@@ -240,13 +462,13 @@ class Camus:
          Intended to be used in conjuction with create_batch_minimization.
          Method that runs all minimizations in subdirectories of `base_directory` and stores the minimized
          structures in self.Cstructures.minimized_set. 
-         If `save_traj` is given, a `traj_filename` ASE trajectory file is saved to `base_directory`.
+         If `save_traj` is True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
          It is assumed the subdirectories names end with a structure index {_1, _2, ...} so that the ordering
          of structures created by create_batch_minimization is preserved.
  
          Parameters:
              base_directory: directory in which the subdirectories with minimization files are given
-             specorder: namers of atom types in the LAMMPS minimization
+             specorder: names of atom types in the LAMMPS minimization
              prefix: prefix of the subdirectory names
              save_traj: if True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
              max_runtime [seconds]: if a calculation is still running after max_runtime, cancel and disregard it

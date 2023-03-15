@@ -39,6 +39,10 @@ class Scheduler(ABC):
     def run_submission_script(self, filename):
         ...
 
+    @abstractmethod
+    def check_job_status(self, job_id, max_queuetime, max_runtime, *args):
+        ...
+
 class Slurm(Scheduler):
 
 
