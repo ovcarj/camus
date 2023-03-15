@@ -119,10 +119,10 @@ reject_minimum () {
 
 save_minimum () {
 
-    cp $ACCEPTED_FILE ${dE_initial_threshold}_${dE_final_threshold}_minimum_$minima_counter.xyz
-    cp $SADDLE_POINT_FILE ${dE_initial_threshold}_${dE_final_threshold}_saddlepoint_$minima_counter.xyz
-    cp artn.in  ${dE_initial_threshold}_${dE_final_threshold}_ARTn_$minima_counter.in
-    cp artn.out ${dE_initial_threshold}_${dE_final_threshold}_ARTn_$minima_counter.out
+    cp $ACCEPTED_FILE ${CWD}_minimum_$minima_counter.xyz
+    cp $SADDLE_POINT_FILE ${CWD}_saddlepoint_$minima_counter.xyz
+    cp artn.in  ${CWD}_ARTn_$minima_counter.in
+    cp artn.out ${CWD}_ARTn_$minima_counter.out
 
     E_saddle=$(head -2 $SADDLE_POINT_FILE | tail -1 | awk {'print $NF'} | tr ":" "\n" | tail -1)
 
@@ -148,7 +148,7 @@ move_starting_point () {
 
     cat coords_for_data.tmp >> top_of_data.tmp
 
-    mv lammps.data ${dE_initial_threshold}_${dE_final_threshold}_lammps_$(echo "$minima_counter - 1" | bc -l).data
+    mv lammps.data ${CWD}_lammps_$(echo "$minima_counter - 1" | bc -l).data
     mv top_of_data.tmp lammps.data
     rm *.tmp
 
@@ -177,11 +177,13 @@ change_initial_parameters () {
 
 define_file_names () {
 
-    MINIMA_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_minima_energies.dat"
-    SADDLEPOINT_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_saddlepoint_energies.dat"
-    ALL_ENERGIES_FILE="${dE_initial_threshold}_${dE_final_threshold}_all_energies.dat"
-    BASIN_COUNTERS_FILE="${dE_initial_threshold}_${dE_final_threshold}_basin_counters.dat"
-    SISYPHUS_LOG_FILE="${dE_initial_threshold}_${dE_final_threshold}_SISYPHUS.log"
+    CWD=$(pwd -P | awk -F/ '{print $NF}')
+
+    MINIMA_ENERGIES_FILE="${CWD}_minima_energies.dat"
+    SADDLEPOINT_ENERGIES_FILE="${CWD}_saddlepoint_energies.dat"
+    ALL_ENERGIES_FILE="${CWD}_all_energies.dat"
+    BASIN_COUNTERS_FILE="${CWD}_basin_counters.dat"
+    SISYPHUS_LOG_FILE="${CWD}_SISYPHUS.log"
 
 }
 

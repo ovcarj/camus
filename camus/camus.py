@@ -11,6 +11,7 @@ import importlib
 import subprocess
 import time
 import glob
+import numpy as np
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
@@ -89,8 +90,78 @@ class Camus:
 
         # Write the Sisyphus bash script 
         if not self.Csisyphus.sisyphus_parameters:
-            self.Csisyphus.set_sisyphus_parameters
+            self.Csisyphus.set_sisyphus_parameters()
         self.Csisyphus.write_sisyphus_script(target_directory=target_directory)
+
+    def create_batch_sisyphus(self, base_directory, specorder, input_structures=None, prefix='sis',
+            transition_minimum=0.1, transition_maximum=1.0, transition_step=0.1, delta_e_maximum=0.1, calcs_per_parameters=1, 
+            schedule=True, run_command='bash sisyphus.sh ', job_filename='sub.sh', initial_lammps_parameters={}, atom_style='atomic'):
+        """
+        Method that creates `calc_per_parameters` * `input_structures` * #of_parameter_combinations directories in `base_directory` with the names
+        {prefix}_(# of structure)_(transition energy index)_(delta_e_final index)_(calculation_index) that contains all files necessary to 
+        perform a Sisyphus calculation.
+        
+        `transition_energy` range is {transition_minimum + n*transition_step} for every n for which transition_energy < transition_maximum
+        `delta_e_final` range is {transition_energy - (n+1)*transition_step} for every n for which delta_e_final > delta_e_maximum
+
+        For each combination of `transition_energy` and delta_e_final, calcs_per_parameters directories are generated.
+
+        If `input_structures` is not given, self.Cstructures.structures is used.
+ 
+        Parameters:
+            base_directory: directory in which to create the directories for Sisyphus calculations
+            specorder: order of atom types in which to write the LAMMPS data file
+            input_structures: list of ASE Atoms object from which Sisyphus starts
+            schedule: if True, write a submission script to each directory
+            job_filename: name of the submission script
+            atom_style: LAMMPS atom style 
+ 
+         """
+        if delta_e_maximum > transition_maximum:
+            raise ValueError("delta_e_maximum must be greater than or equal to transition_minimum") 
+
+        # Set default input_structures to self.Cstructures.structures
+        if input_structures is None:
+             input_structures = self.Cstructures.structures
+
+        # Create base directory if it does not exist
+        if not os.path.exists(base_directory):
+            os.makedirs(base_directory)
+
+        # Special case of single input structure:
+        if isinstance(input_structures, Atoms): input_structures = [input_structures]
+
+        # Generate list of transition_energies
+        transition_energies = np.arange(transition_minimum, transition_maximum, step=transition_step)
+
+        # Initialize self.Csisyphus.sisyphus_parameters
+        if not self.Csisyphus.sisyphus_parameters:
+            self.Csisyphus.set_sisyphus_parameters()
+
+        # Create batch Sisyphus calculations
+        for structure_index, structure in enumerate(input_structures):
+            
+            for te_index, transition_energy in enumerate(transition_energies):
+
+                # Generate list of delta_e_final energies
+                delta_e_finals = np.arange(delta_e_maximum, transition_energy + transition_step, step=transition_step)
+
+                for de_index, delta_e_final in enumerate(delta_e_finals):
+                    
+                    # Set Sisyphus parameters
+                    self.Csisyphus.set_sisyphus_parameters(dE_initial_threshold=str(transition_energy), dE_final_threshold=str(delta_e_final))
+
+                    for calculation in range(calcs_per_parameters):
+
+                        target_directory = os.path.join(base_directory, f'{prefix}_{structure_index}_{te_index}_{de_index}_{calculation}')
+                        
+                        # Create Sisyphus calculation
+                        self.create_sisyphus_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, 
+                                atom_style=atom_style, initial_lammps_parameters=initial_lammps_parameters)
+
+                        if schedule:
+                            self.Cscheduler.set_scheduler_parameters(run_command=run_command)
+                            self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
     def create_lammps_minimization(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
         """
@@ -163,7 +234,7 @@ class Camus:
             if schedule:
                 self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
-    def run_batch_minimization(self, base_directory, specorder=['Br', 'I', 'Cs', 'Pb'], prefix='minimization', save_traj=True, 
+    def run_batch_minimization(self, base_directory, specorder, prefix='minimization', save_traj=True, 
             traj_filename='minimized_structures.traj', max_runtime=1800, max_queuetime=3600, job_filename='sub.sh'):
         """
          Intended to be used in conjuction with create_batch_minimization.
