@@ -27,8 +27,11 @@ echo 'export CAMUS_LAMMPS_MINIMIZATION_DIR=~/.CAMUS/LAMMPS_minimization' >> ~/.b
 # Define LAMMPS execution command
 echo 'export RUN_LAMMPS=""' >> ~/.bashrc
 
-# Define path to LAMMPS executable 
+# Define path to LAMMPS executable
 echo 'export LAMMPS_EXE=/path/to/lammps/executable' >> ~/.bashrc
+
+# Define default path to ML model
+echo 'export ML_MODEL=/path/to/ml/model' >> ~/.bashrc
 
 echo '' >> ~/.bashrc
 echo '# <<< Initialize CAMUS environment variables <<<' >> ~/.bashrc
