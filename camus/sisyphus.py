@@ -46,7 +46,7 @@ class Sisyphus:
     @lammps_parameters.deleter
     def lammps_parameters(self):
         del self._lammps_parameters
-        
+
     @property
     def sisyphus_parameters(self):
         return self._sisyphus_parameters
@@ -133,7 +133,7 @@ class Sisyphus:
         Parameters:
             `input_parameters`: dictionary of LAMMPS commands and arguments in the format {'command1': 'args1' }.
             If `input_parameters` is not given, default parameters for a basic ARTn calculation will be used.
-            `path to model`: path to the ML model to be used. If not specified, a default hardcoded directory will be used.
+            `path to model`: path to the ML model to be used. If not specified, ML_MODEL environment variable will be used.
             `specorder`: order of atomic species. If not specified, a default hardcoded ordering will be used.
             `initial_sisyphus`: if True, standard parameters for a lammps.in file for a calculation of potential energy are set.
                                 It is necessary to perform this calculation to perform the Sisyphus search.
@@ -141,13 +141,13 @@ class Sisyphus:
 
             WARNING: not specifying the above parameters may easily lead to wrong results.
 
-            NOTE: this method is intended to be used mainly within the CAMUS algorithm for Sisyphus searches 
+            NOTE: this method is intended to be used mainly within the CAMUS algorithm for Sisyphus searches
             and therefore it currently doesn't have a lot of flexibility (dicts may not be the best choice).
 
         """
 
         if path_to_model is None:
-            path_to_model = '/storage/perovskites/allegro/deploys/model_gen1/model'
+            path_to_model = os.environ.get('ML_MODEL')
         if specorder is None:
             specorder = 'Br I Cs Pb'
 
@@ -277,7 +277,7 @@ class Sisyphus:
             'lammps_exe': os.environ.get('LAMMPS_EXE'),
             'sisyphus_functions_path': os.path.join(os.environ.get('CAMUS_BASE'), 'sisyphus_files/sisyphus_functions'),
             'initial_lammps_in': 'initial_lammps.in',
-            'initial_lammps_out': 'initial_lammps.out' 
+            'initial_lammps_out': 'initial_lammps.out'
             }
 
         for key in kwargs:
