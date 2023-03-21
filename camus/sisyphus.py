@@ -272,7 +272,7 @@ class Sisyphus:
             'dE_initial_threshold': '0.5',
             'dE_final_threshold': '0.1',
             'delr_threshold': '1.0',
-            'maximum_steps': '10',
+            'maximum_steps': '100',
             'run_lammps': os.environ.get('RUN_LAMMPS'),
             'lammps_exe': os.environ.get('LAMMPS_EXE'),
             'sisyphus_functions_path': os.path.join(os.environ.get('CAMUS_BASE'), 'sisyphus_files/sisyphus_functions'),
