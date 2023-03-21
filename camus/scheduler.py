@@ -189,7 +189,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
             self.jobs_info[f'{job_id}']['run_time'] = current_time - self.jobs_info[f'{job_id}']['start_time']
 
             # Job running too long
-            if self.jobs_info[f'{job_id}']['queue_time'] > max_runtime:
+            if self.jobs_info[f'{job_id}']['run_time'] > max_runtime:
                 self.jobs_info[f'{job_id}']['job_status'] = 'MAX_RUN_TIME_ELLAPSED'
                 self.job_ids.remove(job_id)
                 subprocess.run(["scancel", job_id])
