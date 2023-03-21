@@ -4,6 +4,8 @@ from ase.io import read
 from camus import camus
 
 structs = read('test.traj', index='0:20')
+candidate_structs = read('test.traj', index='15:525')
+candidate_structs2 = read('test.traj', index='515:525')
 
 camus_object = camus.Camus(structures=structs)
 
@@ -16,6 +18,19 @@ print(f'Created ML datasets. {len(camus_object.Cstructures.test_set)} structures
 camus_object.Cstructures.create_sisyphus_set()
 
 print(f'Created Sisyphus set randomly. {len(camus_object.Cstructures.sisyphus_set)} structures are in the Sisyphus set.')
+
+#camus_object.Cstructures.calculate_descriptors()
+
+#print(f'Created {len(camus_object.Cstructures.descriptors)} default descriptors.')
+
+candidate_structures = camus.Structures(structures=candidate_structs)
+candidate_structures2 = camus.Structures(structures=candidate_structs2)
+
+unique_structs = camus_object.Cstructures.find_unique_structures(reference_set_structures=camus_object.Cstructures, candidate_set_structures=candidate_structures)
+unique_structs2 = camus_object.Cstructures.find_unique_structures(reference_set_structures=camus_object.Cstructures, candidate_set_structures=candidate_structures2)
+
+print(f'Found {len(unique_structs)} unique structures.')
+print(f'Found {len(unique_structs2)} unique structures.')
 
 
 empty = camus.Camus(structs)

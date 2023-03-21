@@ -10,10 +10,13 @@ import numpy as np
 import os
 from ase import Atoms
 from ase.io import write
+from dscribe.descriptors import ACSF
+from dscribe.kernels import AverageKernel
 
 class Structures:
 
-    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], sisyphus_set=[], minimized_set=[]):
+    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], 
+sisyphus_set=[], minimized_set=[], descriptors=None, acsf_parameters=None):
         """
         Initializes a new Structures object with a list of structures and optional training, validation and test sets.
 
@@ -36,6 +39,20 @@ class Structures:
         self._test_set = test_set
         self._sisyphus_set = sisyphus_set
         self._minimized_set = minimized_set 
+
+        # Check https://stackoverflow.com/questions/73887738/dict-instance-variable-being-changed-for-all-instances
+        # https://florimond.dev/en/posts/2018/08/python-mutable-defaults-are-the-source-of-all-evil/
+        # Should refactor the code to take care of all instances of this not-a-bug-but-a-feature brilliancy...
+
+        if descriptors is not None:
+            self._descriptors = descriptors
+        else:
+            self._descriptors = []
+
+        if acsf_parameters is not None:
+            self._acsf_parameters = acsf_parameters
+        else:
+            self._acsf_parameters = {}
 
     @property
     def structures(self):
@@ -109,18 +126,103 @@ class Structures:
     def minimized_set(self):
         del self._minimized_set
 
+    @property
+    def descriptors(self):
+        return self._descriptors
 
-    def find_unique_structures(self, candidate_set, reference_set=None, threshold=0.95):
-        """ WILL BE UPDATED SOON. Find a set of unique structures by some criterium (to be defined) from a set of `input_structures`.
-        If `reference_set` is not given, self.structures will be used.
+    @descriptors.setter
+    def descriptors(self, new_descriptors):
+        self._descriptors = new_descriptors
 
-        If replace_structures=True, replace the current structures in the Camus object with the unique ones.
-        Otherwise, return a set of unique structures.
+    @descriptors.deleter
+    def descriptors(self):
+        del self._descriptors
+
+    @property
+    def acsf_parameters(self):
+        return self._acsf_parameters
+
+    @acsf_parameters.setter
+    def acsf_parameters(self, new_acsf_parameters):
+        self._acsf_parameters = new_acsf_parameters
+
+    @acsf_parameters.deleter
+    def acsf_parameters(self):
+        del self._acsf_parameters
+
+    def set_acsf_parameters(self, **kwargs):
+        """ Method that sets parameters to be used for creating the ACSF descriptors in self._acsf_parameters dictionary.
+
+        Parameters:
+            parameter: parameter description placeholder
+
         """
-        if reference_set is None:
-            reference_set = self.structures
+        default_parameters= {
+            'rcut': 6.0,
+            'g2_params': [(1, 2), (1, 4), (1, 8),(1,16)],
+            'g3_params': [1,2],
+            'g4_params': [(1, 4, 4), (1, 4, -1), (1, 8, 4), (1, 8, -1)],
+            'species': ['Cs', 'Pb', 'Br', 'I'],
+            'periodic': True
+            }
 
-        unique_structures = reference_set[0] #for testing purposes
+        for key in kwargs:
+            if key not in default_parameters:
+                raise RuntimeError('Unknown keyword: %s' % key)
+
+        # Set self._acsf_parameters
+        for key, value in default_parameters.items():
+            self._acsf_parameters[key] = kwargs.pop(key, value)
+
+    def calculate_descriptors(self, input_structures=None):
+
+        if input_structures is None:
+            input_structures = self.structures
+
+        # Set parameters if the user didn't set them explicitly beforehand
+        if not self.acsf_parameters:
+            self.set_acsf_parameters()
+
+        acsf_descriptor = ACSF(
+            rcut=self.acsf_parameters['rcut'],
+            g2_params=self.acsf_parameters['g2_params'],
+            g3_params=self.acsf_parameters['g3_params'],
+            g4_params=self.acsf_parameters['g4_params'],
+            species=self.acsf_parameters['species'],
+            periodic=self.acsf_parameters['periodic']
+            )
+
+        for atoms in input_structures:
+            descriptor = acsf_descriptor.create(atoms)
+            self.descriptors.append(descriptor)
+
+    @staticmethod
+    def find_unique_structures(reference_set_structures, candidate_set_structures, threshold=0.90, metric='laplacian', gamma=1):
+        # reference_set_structures and candidate_set_structures must be instances of Structures class
+
+        if not candidate_set_structures.descriptors:
+            candidate_set_structures.calculate_descriptors()
+
+        if not reference_set_structures.descriptors:
+            reference_set_structures.calculate_descriptors()
+
+        unique_structures = []
+        similarity_of_structures = []
+
+        for i, candidate_descriptor in enumerate(candidate_set_structures.descriptors):
+            is_unique = True
+
+            for reference_descriptor in reference_set_structures.descriptors:
+                ak = AverageKernel(metric=metric, gamma=gamma) 
+                ak_kernel = ak.create([reference_descriptor, candidate_descriptor])
+                similarity = ak_kernel[0, 1]
+                similarity = round(similarity, 5) # arbitrary 5
+                if similarity >= threshold:
+                    is_unique = False
+                    break
+
+            if is_unique:
+                unique_structures.append(candidate_set_structures.structures[i])
 
         return unique_structures
 
