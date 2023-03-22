@@ -8,8 +8,8 @@ import os
 
 class Sisyphus:
 
-    def __init__(self, artn_parameters={}, lammps_parameters={},
-            sisyphus_parameters={}):
+    def __init__(self, artn_parameters=None, lammps_parameters=None,
+            sisyphus_parameters=None):
         """
         Initializes a new Sisyphus object.
 
@@ -17,9 +17,20 @@ class Sisyphus:
             parameter: parameter description placeholder.
         """
 
-        self._artn_parameters = artn_parameters
-        self._lammps_parameters = lammps_parameters
-        self._sisyphus_parameters = sisyphus_parameters
+        if artn_parameters is not None:
+            self._artn_parameters = artn_parameters
+        else:
+            self._artn_parameters = []         
+
+        if lammps_parameters is not None:
+            self._lammps_parameters = lammps_parameters
+        else:
+            self._lammps_parameters = []  
+
+        if sisyphus_parameters is not None:
+            self._sisyphus_parameters = sisyphus_parameters
+        else:
+            self._sisyphus_parameters = []  
 
     @property
     def artn_parameters(self):
@@ -127,7 +138,7 @@ class Sisyphus:
         with open(os.path.join(target_directory, 'artn.in'), 'w') as f:
             f.write(artn_in_content)
 
-    def set_lammps_parameters(self, input_parameters={}, path_to_model=None, specorder=None, initial_sisyphus=False, minimization=False, **kwargs):
+    def set_lammps_parameters(self, input_parameters=None, path_to_model=None, specorder=None, initial_sisyphus=False, minimization=False, **kwargs):
         """ Method that sets parameters to be written in lammps.in to self._lammps_parameters dictionary.
 
         Parameters:
@@ -197,9 +208,10 @@ class Sisyphus:
             'dump': 'minimizeDump all custom 1 minimized.xyz type x y z fx fy fz',
             'run': 0}
 
-
-        # If input parameters are not given, use default_parameters
-        if not input_parameters:
+        # If input_parameters aren't provided use default
+        if input_parameters is not None:
+            self._input_parameters = input_parameters
+        else:
             input_parameters = default_parameters
 
         # If initial_sisyphus=True, use default_initial_sisyphus parameters
