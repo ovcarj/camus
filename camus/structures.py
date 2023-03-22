@@ -15,8 +15,8 @@ from dscribe.kernels import AverageKernel
 
 class Structures:
 
-    def __init__(self, structures=[], training_set=[], validation_set=[], test_set=[], 
-sisyphus_set=[], minimized_set=[], descriptors=None, acsf_parameters=None):
+    def __init__(self, structures=None, training_set=None, validation_set=None, test_set=None, 
+sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         """
         Initializes a new Structures object with a list of structures and optional training, validation and test sets.
 
@@ -32,17 +32,39 @@ sisyphus_set=[], minimized_set=[], descriptors=None, acsf_parameters=None):
             minimized_set (list of ASE Atoms objects): Container for minimized structures.
                 Defaults to an empty list.
         """
-
-        self._structures = structures
-        self._training_set = training_set
-        self._validation_set = validation_set
-        self._test_set = test_set
-        self._sisyphus_set = sisyphus_set
-        self._minimized_set = minimized_set 
-
         # Check https://stackoverflow.com/questions/73887738/dict-instance-variable-being-changed-for-all-instances
         # https://florimond.dev/en/posts/2018/08/python-mutable-defaults-are-the-source-of-all-evil/
         # Should refactor the code to take care of all instances of this not-a-bug-but-a-feature brilliancy...
+
+        if structures is not None:
+            self._structures = structures
+        else:
+            self._structures = []
+
+        if training_set is not None:
+            self._training_set = training_set
+        else:
+            self._training_set = []
+
+        if validation_set is not None:
+            self._validation_set = validation_set
+        else:
+            self._validation_set = []
+
+        if test_set is not None:
+            self._test_set = test_set
+        else:
+            self._test_set = []
+
+        if sisyphus_set is not None:
+            self._sisyphus_set = sisyphus_set
+        else:
+            self._sisyphus_set = []
+
+        if minimized_set is not None:
+            self._minimized_set = minimized_set
+        else:
+            self._minimized_set = []
 
         if descriptors is not None:
             self._descriptors = descriptors
@@ -364,7 +386,7 @@ sisyphus_set=[], minimized_set=[], descriptors=None, acsf_parameters=None):
                 with open(file_name, 'w') as f:
                     f.writelines(lines)
 
-    def set_charges(self, charges_input={}, input_structures=None):
+    def set_charges(self, charges_input=None, input_structures=None):
         """ Method that takes a dictionary `charges_input = {atomic_type1: charge, atomic_type2: charge, ...}` and sets the charges to
         every structure in `input_structures` using ase.atoms.set_initial_charges() method. Can be useful for classical potential simulations.
 
@@ -372,10 +394,10 @@ sisyphus_set=[], minimized_set=[], descriptors=None, acsf_parameters=None):
         If `charges_input` are not given, defaults to charges given in https://doi.org/10.1039/D0TA03200J
 
         """
-        if input_structures is None:
-            input_structures = self.structures
-
-        if not charges_input:
+        #charges_input
+        if charges_input is not None:
+            self._charges_input = charges_input
+        else:
             charges_input = {
                     'Pb': 0.9199,
                     'Cs': 1.0520,
@@ -383,7 +405,10 @@ sisyphus_set=[], minimized_set=[], descriptors=None, acsf_parameters=None):
                     'Br': -0.6573
                     }
 
-        # Special case of single input structure:
+        if input_structures is None:
+            input_structures = self.structures
+
+       # Special case of single input structure:
         if isinstance(input_structures, Atoms): input_structures = [input_structures]
 
         # Create the full charges array for all atoms and set_initial_charges(charges)
