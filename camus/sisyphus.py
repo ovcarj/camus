@@ -20,17 +20,17 @@ class Sisyphus:
         if artn_parameters is not None:
             self._artn_parameters = artn_parameters
         else:
-            self._artn_parameters = []         
+            self._artn_parameters = {}         
 
         if lammps_parameters is not None:
             self._lammps_parameters = lammps_parameters
         else:
-            self._lammps_parameters = []  
+            self._lammps_parameters = {}  
 
         if sisyphus_parameters is not None:
             self._sisyphus_parameters = sisyphus_parameters
         else:
-            self._sisyphus_parameters = []  
+            self._sisyphus_parameters = {}  
 
     @property
     def artn_parameters(self):

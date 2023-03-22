@@ -26,13 +26,33 @@ scheduler_module = importlib.import_module('camus.scheduler')
 
 class Camus:
 
-    def __init__(self, structures=[], artn_parameters={}, lammps_parameters={}, sisyphus_parameters={},
+    def __init__(self, structures=None, artn_parameters=None, lammps_parameters=None, sisyphus_parameters=None,
             scheduler='Slurm'):
         """
         Initializes a new Camus object, whose attributes `self.Cname` are instances of `name` classes.
         The methods in this class should allow an interface between the `name` classes.
 
         """
+        
+        if structures is not None:
+            self._structures = structures
+        else:
+            self._structures = []
+       
+        if artn_parameters is not None:
+            self._artn_parameters = artn_parameters
+        else:
+            self._artn_parameters = {}
+      
+        if lammps_parameters is not None:
+            self._lammps_parameters = lammps_parameters
+        else:
+            self._lammps_parameters = {}
+     
+        if sisyphus_parameters is not None:
+            self._sisyphus_parameters = sisyphus_parameters
+        else:
+            self._sisyphus_parameters = {}
 
         self.Cstructures = Structures(structures=structures)
         self.Csisyphus = Sisyphus(artn_parameters, lammps_parameters, sisyphus_parameters)
@@ -46,7 +66,7 @@ class Camus:
         # Initialize self.Cstructures.transitions for batch Sisyphus calculations
         self.Cstructures.transitions = []
 
-    def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters={}, specorder=None, atom_style='atomic'):
+    def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters=None, specorder=None, atom_style='atomic'):
         """
         Convenience method that writes all necessary files to start a Sisyphus calculation for an `input_structure` to a `target_directory`.
         If `input_structure` is not given, self.Cstructures.structures[0] is used.
@@ -76,12 +96,18 @@ class Camus:
         # Create target directory if it does not exist
         if not os.path.exists(target_directory):
             os.makedirs(target_directory)
-
+ 
         # Write artn.in file
         if not self.Csisyphus.artn_parameters:
             self.Csisyphus.set_artn_parameters()
         self.Csisyphus.write_artn_in(target_directory=target_directory)
 
+        # Set initial_lammps_parameters 
+        if initial_lammps_parameters is not None:
+            self._initial_lammps_parameters = initial_lammps_parameters
+        else:
+            self._initial_lammps_parameters = {}
+ 
         # Write initial_lammps.in file for PE calculation
         initial_sisyphus_ins = Sisyphus(lammps_parameters=initial_lammps_parameters)
         if not initial_sisyphus_ins.lammps_parameters:
