@@ -12,7 +12,7 @@ from abc import ABC, abstractmethod
 
 class Scheduler(ABC):
 
-    def __init__(self, scheduler_parameters={}):
+    def __init__(self, scheduler_parameters=None):
         """
         Initializes a new Scheduler object.
 
@@ -21,7 +21,11 @@ class Scheduler(ABC):
 
         """
 
-        self._scheduler_parameters = scheduler_parameters
+        if scheduler_parameters is not None:
+            self._scheduler_parameters = scheduler_parameters
+        else:
+            self._scheduler_parameters = {}
+
         self.job_ids = []
         
         # Meant to be a flexible dictionary, e.g. in the form {'job_id': {working_directory: ..., job_status: ..., ...}}
@@ -46,7 +50,7 @@ class Scheduler(ABC):
 class Slurm(Scheduler):
 
 
-    def __init__(self, scheduler_parameters={}):
+    def __init__(self, scheduler_parameters=None):
 
         super().__init__(scheduler_parameters)
 

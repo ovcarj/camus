@@ -4,7 +4,7 @@ from ase.io import read
 from camus import camus
 
 structs = read('test.traj', index='0:20')
-candidate_structs = read('test.traj', index='15:525')
+candidate_structs = read('test.traj', index='15:35')
 candidate_structs2 = read('test.traj', index='515:525')
 
 camus_object = camus.Camus(structures=structs)
