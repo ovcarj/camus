@@ -23,11 +23,12 @@ from ase.io import write
 from ase.io.lammpsrun import read_lammps_dump
 
 scheduler_module = importlib.import_module('camus.scheduler')
+dft_module = importlib.import_module('camus.dft')
 
 class Camus:
 
     def __init__(self, structures=None, artn_parameters=None, lammps_parameters=None, sisyphus_parameters=None,
-            scheduler='Slurm'):
+            scheduler='Slurm', dft='VASP'):
         """
         Initializes a new Camus object, whose attributes `self.Cname` are instances of `name` classes.
         The methods in this class should allow an interface between the `name` classes.
@@ -59,6 +60,9 @@ class Camus:
 
         scheduler_class = getattr(scheduler_module, scheduler)
         self.Cscheduler = scheduler_class()
+
+        dft_class = getattr(dft_module, dt)
+        self.Cdft = dft_class()
 
         # Initialize self.sisyphus_dictionary which will contain all information on the batch Sisyphus calculations
         self.sisyphus_dictionary = {}
