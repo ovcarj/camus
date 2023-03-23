@@ -54,11 +54,6 @@ class Slurm(Scheduler):
 
         super().__init__(scheduler_parameters)
 
-        if scheduler_parameters is not None:
-            self._scheduler_parameters = scheduler_parameters
-        else:
-            self._scheduler_parameters = {}
-
     @property
     def scheduler_parameters(self):
         return self._scheduler_parameters

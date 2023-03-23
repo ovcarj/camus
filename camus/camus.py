@@ -129,7 +129,7 @@ class Camus:
 
     def create_batch_sisyphus(self, base_directory, specorder, input_structures=None, prefix='sis',
             transition_minimum=0.1, transition_maximum=1.0, transition_step=0.1, delta_e_maximum=0.1, calcs_per_parameters=1, 
-            schedule=True, run_command='bash sisyphus.sh ', job_filename='sub.sh', initial_lammps_parameters={}, atom_style='atomic'):
+            schedule=True, run_command='bash sisyphus.sh ', job_filename='sub.sh', initial_lammps_parameters=None, atom_style='atomic'):
         """
         Method that creates `calc_per_parameters` * `input_structures` * #of_parameter_combinations directories in `base_directory` with the names
         {prefix}_(# of structure)_(transition energy index)_(delta_e_final index)_(calculation_index) that contains all files necessary to 
@@ -157,6 +157,12 @@ class Camus:
         # Set default input_structures to self.Cstructures.structures
         if input_structures is None:
              input_structures = self.Cstructures.structures
+        
+        # Set initial_lammps_parameters 
+        if initial_lammps_parameters is not None:
+            self._initial_lammps_parameters = initial_lammps_parameters
+        else:
+            self._initial_lammps_parameters = {}
 
         # Create base directory if it does not exist
         if not os.path.exists(base_directory):
