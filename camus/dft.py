@@ -15,11 +15,8 @@ This module does fuck all right now.
 """
 
 import os
-import subprocess
-import time
 
 from abc import ABC, abstractmethod
-
 from ase.io import read
 
 class DFT(ABC):
@@ -38,6 +35,7 @@ class DFT(ABC):
         else:
             self._dft_parameters = {}
 
+# make abstract methods the same as they are in VASP
     @abstractmethod
     def set_dft_parameters(self, **kwargs):
         ...
@@ -111,13 +109,19 @@ class VASP(DFT):
         data = read(self.input_structure)
         poscar = write_vasp(f'POSCAR', data, vasp5=True)
 
-    def assemble_dft_calculation(self):
+    def assemble_dft_calculation(self, target_directory=None):
     '''
     - POSCAR -- from write_POSCAR
     - POTCAR -- provide path or use the default path
     - write INCAR -- using the parameters (if not provided use the default) to create an INCAR file
     - create a directory including these three files [and then submit the job using the scheduler]
     '''
+
+        # Set parameters if the user didn't set them explicitly beforehand
+        if not self.dft_parameters:
+            self.set_dft_parameters()
+
+
 
     def parse_dft_output(self, dft_output_file='OUTCAR', trajectory_name='dft_out.traj'):
         from ase.io.trajectory import Trajectory
