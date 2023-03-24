@@ -24,6 +24,9 @@ echo 'export CAMUS_SISYPHUS_DATA_DIR=~/.CAMUS/SISYPHUS_data' >> ~/.bashrc
 # Define default LAMMPS minimization target directory
 echo 'export CAMUS_LAMMPS_MINIMIZATION_DIR=~/.CAMUS/LAMMPS_minimization' >> ~/.bashrc
 
+# Define default DFT target directory
+echo 'export CAMUS_DFT_DIR=~/.CAMUS/DFT' >> ~/.bashrc
+
 # Define LAMMPS execution command
 echo 'export RUN_LAMMPS=""' >> ~/.bashrc
 
@@ -32,6 +35,9 @@ echo 'export LAMMPS_EXE=/path/to/lammps/executable' >> ~/.bashrc
 
 # Define default path to ML model
 echo 'export ML_MODEL=/path/to/ml/model' >> ~/.bashrc
+
+# Define default path to POTCAR (for spec order: Br I Cs Pb)
+echo 'export DFT_POTCAR=/path/to/dft/POTCAR' >> ~/.bashrc
 
 echo '' >> ~/.bashrc
 echo '# <<< Initialize CAMUS environment variables <<<' >> ~/.bashrc

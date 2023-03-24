@@ -35,6 +35,11 @@ class DFT(ABC):
         else:
             self._dft_parameters = {}
 
+        # Default directory for the whole DFT calculation (?)
+        '''
+                (...)
+        '''
+
 # make abstract methods the same as they are in VASP
     @abstractmethod
     def set_dft_parameters(self, **kwargs):
@@ -96,18 +101,21 @@ class VASP(DFT):
             if key not in default_parameters:
                 raise RuntimeError('Unknown keyword: %s' % key)
 
-        # Set self._scheduler_parameters
+        # Set self._dft_parameters
         for key, value in default_parameters.items():
-            self._scheduler_parameters[key] = kwargs.pop(key, value)
+            self._dft_parameters[key] = kwargs.pop(key, value)
     
     @staticmethod
-    def write_POSCAR(input_structure=None, specorder=None):
-        #if input_structure None...
+    def write_POSCAR(input_structure, specorder=None):
+'''
+If you're calling this function you obviously want to make a POSCAR out of your trajectory so it would stand to reason you have an input structure.
 
-        from ase.io.vasp import write_vasp
-
+Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
+''' 
         data = read(self.input_structure)
-        poscar = write_vasp(f'POSCAR', data, vasp5=True)
+        write(f'POSCAR', data, format='vasp')
+
+        # target directory (?)
 
     def assemble_dft_calculation(self, target_directory=None):
     '''
@@ -116,13 +124,36 @@ class VASP(DFT):
     - write INCAR -- using the parameters (if not provided use the default) to create an INCAR file
     - create a directory including these three files [and then submit the job using the scheduler]
     '''
+        
+        # Set default directory 
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_DFT_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
 
         # Set parameters if the user didn't set them explicitly beforehand
         if not self.dft_parameters:
             self.set_dft_parameters()
 
+        # Define the INCAR file content
+        INCAR_content = "&DFT_PARAMETERS\n"
+        for key, value in self.dft_parameters.items():
+            if value is not None:
+                INCAR_content += f"  {key} = {self._dft_parameters[key]}\n"
+        INCAR_content += "/\n"
+
+        # Write the INCAR file to the target directory
+        with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
+            f.write(artn_in_content)
+
+        # The path to POTCAR
 
 
+    # might also need directory paths
     def parse_dft_output(self, dft_output_file='OUTCAR', trajectory_name='dft_out.traj'):
         from ase.io.trajectory import Trajectory
         traj = Trajectory(self.trajectory_name, 'w')
