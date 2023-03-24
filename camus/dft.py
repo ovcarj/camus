@@ -101,11 +101,10 @@ class VASP(DFT):
             self._dft_parameters[key] = kwargs.pop(key, value)
     
     @staticmethod
-    def write_POSCAR(input_structure, specorder=None):
+    def write_POSCAR(input_structure, target_directory=None):
+    #If you're calling this function you obviously want to make a POSCAR out of your trajectory so it would stand to reason you have an input structure.
 
-#If you're calling this function you obviously want to make a POSCAR out of your trajectory so it would stand to reason you have an input structure.
-
-#Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
+    #Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
  
         # Read input structure (temporary index)
         data = read(input_structure, index=0)
@@ -121,6 +120,7 @@ class VASP(DFT):
             os.makedirs(target_directory)
 
         # Write the POSCAR file to the target directory
+        from ase.io import write
         write(os.path.join(target_directory, 'POSCAR'), data, format='vasp')
 
 
@@ -141,7 +141,7 @@ class VASP(DFT):
             self.set_dft_parameters()
 
         # Define the INCAR file content
-        incar_content = "&DFT_PARAMETERS\n"
+        incar_content = "#DFT_PARAMETERS\n"
         for key, value in self.dft_parameters.items():
             if value is not None:
                 incar_content += f"  {key} = {self._dft_parameters[key]}\n"
