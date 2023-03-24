@@ -41,11 +41,11 @@ class DFT(ABC):
         ...
 
     @abstractmethod
-    def assemble_dft_calculation()
+    def assemble_dft_calculation(self, target_directory=None, path_to_potcar=None):
         ...
 
     @abstractmethod
-    def parse_dft_output(self, target_directory=None)
+    def parse_dft_output(self, target_directory=None):
         ...
 
 class VASP(DFT):
@@ -55,7 +55,7 @@ class VASP(DFT):
         super().__init__(dft_parameters)
 
     @property
-    def dft_parameters
+    def dft_parameters(self):
         return self._dft_parameters
 
     @dft_parameters.setter
@@ -102,13 +102,13 @@ class VASP(DFT):
     
     @staticmethod
     def write_POSCAR(input_structure, specorder=None):
-'''
-If you're calling this function you obviously want to make a POSCAR out of your trajectory so it would stand to reason you have an input structure.
 
-Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
-'''
-        # Read input structure
-        data = read(self.input_structure)
+#If you're calling this function you obviously want to make a POSCAR out of your trajectory so it would stand to reason you have an input structure.
+
+#Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
+ 
+        # Read input structure (temporary index)
+        data = read(input_structure, index=0)
 
         # Set default target_directory 
         if target_directory is None:
@@ -125,13 +125,7 @@ Fucking specorder: from what I can tell the write_vasp method keeps the order fr
 
 
     def assemble_dft_calculation(self, target_directory=None, path_to_potcar=None):
-    '''
-    - POSCAR -- from write_POSCAR -- DONE
-    - POTCAR -- provide path or use the default path -- DONE
-    - write INCAR -- using the parameters (if not provided use the default) to create an INCAR file -- DONE
-    - create a directory including these three files [and then submit the job using the scheduler]
-    '''
-        
+       
         # Set default target_directory 
         if target_directory is None:
             target_directory = os.environ.get('CAMUS_DFT_DIR')
@@ -168,6 +162,3 @@ Fucking specorder: from what I can tell the write_vasp method keeps the order fr
         traj = Trajectory(self.trajectory_name, 'w')
         atoms = read(self.dft_output_file)
         traj.write(atoms)
-
-
-         

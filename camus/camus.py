@@ -61,7 +61,7 @@ class Camus:
         scheduler_class = getattr(scheduler_module, scheduler)
         self.Cscheduler = scheduler_class()
 
-        dft_class = getattr(dft_module, dt)
+        dft_class = getattr(dft_module, dft)
         self.Cdft = dft_class()
 
         # Initialize self.sisyphus_dictionary which will contain all information on the batch Sisyphus calculations
