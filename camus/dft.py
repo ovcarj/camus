@@ -11,7 +11,7 @@ This module does fuck all right now.
 
 -- add env variable for deffault DFT directory for testing purposes
 
-!! we should add tracking of the DFT process and check for convergence, I have a bash script for this !!
+!! we should add tracking of the DFT process and check for convergence, I have a bash script for this if it is of any help !!
 """
 
 import os
@@ -34,11 +34,6 @@ class DFT(ABC):
             self._dft_parameters = dft_parameters
         else:
             self._dft_parameters = {}
-
-        # Default directory for the whole DFT calculation (?)
-        '''
-                (...)
-        '''
 
 # make abstract methods the same as they are in VASP
     @abstractmethod
@@ -111,21 +106,33 @@ class VASP(DFT):
 If you're calling this function you obviously want to make a POSCAR out of your trajectory so it would stand to reason you have an input structure.
 
 Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
-''' 
+'''
+        # Read input structure
         data = read(self.input_structure)
-        write(f'POSCAR', data, format='vasp')
 
-        # target directory (?)
+        # Set default target_directory 
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_DFT_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
 
-    def assemble_dft_calculation(self, target_directory=None):
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Write the POSCAR file to the target directory
+        write(os.path.join(target_directory, 'POSCAR'), data, format='vasp')
+
+
+    def assemble_dft_calculation(self, target_directory=None, path_to_potcar=None):
     '''
-    - POSCAR -- from write_POSCAR
-    - POTCAR -- provide path or use the default path
-    - write INCAR -- using the parameters (if not provided use the default) to create an INCAR file
+    - POSCAR -- from write_POSCAR -- DONE
+    - POTCAR -- provide path or use the default path -- DONE
+    - write INCAR -- using the parameters (if not provided use the default) to create an INCAR file -- DONE
     - create a directory including these three files [and then submit the job using the scheduler]
     '''
         
-        # Set default directory 
+        # Set default target_directory 
         if target_directory is None:
             target_directory = os.environ.get('CAMUS_DFT_DIR')
             if target_directory is None:
@@ -140,20 +147,22 @@ Fucking specorder: from what I can tell the write_vasp method keeps the order fr
             self.set_dft_parameters()
 
         # Define the INCAR file content
-        INCAR_content = "&DFT_PARAMETERS\n"
+        incar_content = "&DFT_PARAMETERS\n"
         for key, value in self.dft_parameters.items():
             if value is not None:
-                INCAR_content += f"  {key} = {self._dft_parameters[key]}\n"
-        INCAR_content += "/\n"
+                incar_content += f"  {key} = {self._dft_parameters[key]}\n"
+        incar_content += "/\n"
 
         # Write the INCAR file to the target directory
         with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
-            f.write(artn_in_content)
+            f.write(incar_content)
 
         # The path to POTCAR
+        if path_to_potcar is None:
+            path_to_potcar = os.environ.get('DFT_POTCAR')
 
 
-    # might also need directory paths
+    # might also need directory paths and a lot of work (NOBODY LOOK AT THIS!)
     def parse_dft_output(self, dft_output_file='OUTCAR', trajectory_name='dft_out.traj'):
         from ase.io.trajectory import Trajectory
         traj = Trajectory(self.trajectory_name, 'w')
