@@ -248,11 +248,11 @@ class VASP(DFT):
                     
                     # Check for convergence
                     for line in out_lines:
-                        if '' not in line:
+                        if 'Voluntary' in line:
+                            self.Cstructures.dft_set[structure_index] = structures
+                        # if not there the calculation died somewhere along the way and is thus 'NOT CONVERGED'
+                        else:
                             self.Cscheduler.job_info[f'{job_id}'] = 'NOT CONVERGED'
-                            break # where to put this break to go to the next structure?
-
-                    self.Cstructures.dft_set[structure_index] = structures
 
                 else: 
                     self.Cscheduler.job_info[f'{job_id}'] = 'CALCULATION_FAILED'
