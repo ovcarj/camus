@@ -598,6 +598,38 @@ class Camus:
             write(traj_filename, clean_minimizations)
 
 ###
+    def create_dft_calculation(self, target_directory=None, path_to_potcar=None):
+       
+        # Set default target_directory 
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_DFT_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Set parameters if the user didn't set them explicitly beforehand
+        if not self.Cdft.dft_parameters:
+            self.Cdft.set_dft_parameters()
+
+        # Define the INCAR file content
+        incar_content = "#DFT_PARAMETERS\n"
+        for key, value in self.Cdft.dft_parameters.items():
+            if value is not None:
+                incar_content += f"  {key} = {self.Cdft._dft_parameters[key]}\n"
+        incar_content += "/\n"
+
+        # Write the INCAR file to the target directory
+        with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
+            f.write(incar_content)
+
+        # The path to POTCAR
+        if path_to_potcar is None:
+            path_to_potcar = os.environ.get('DFT_POTCAR')
+
+###
     def create_batch_dft(self, base_directory, input_structures=None, dft_parameters=None, prefix='dft', schedule=True, job_filename='sub.sh'):
 
         # Set default input_structues if not specified
@@ -606,9 +638,9 @@ class Camus:
 
         # Set dft_parameters
         if dft_parameters is not None:
-            self.dft_parameters = dft_parameters
+            self.Cdft.dft_parameters = dft_parameters
         else:
-            self.dft_parameters = {}
+            self.Cdft.dft_parameters = {}
 
         # Create base directory if it does not exist
         if not os.path.exists(base_directory):
@@ -623,88 +655,90 @@ class Camus:
             self.create_dft_calculation(target_directory=target_directory)
             self.Cdft.write_POSCAR(input_structure=structure, target_directory=target_directory)
             if schedule:
-                self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
+                #self.Cscheduler.set_scheduler_parameters(run_command=run_command)
+                #self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
+                self.Cdft.write_VASP_sub(target_directory=target_directory, job_filename=job_filename)
 
-    def run_batch_dft(self, base_directory,prefix='dft', save_traj=True, traj_filename='dft_structures.traj', job_filename='sub.sh')
+    def run_batch_dft(self, base_directory,prefix='dft', save_traj=True, traj_filename='dft_structures.traj', job_filename='sub.sh'):
 
-    # cd to base_directory
-    os.chdir(base_directory)
-
-    # Get a list of all the subdirectories sorted by the structure index
-    subdirectories = sorted(glob.glob(f'{prefix}*'), key=lambda x: int(x.split('_')[-1]))
-
-    # Initialize self.Cstructures.dft_set with None
-    self.Cstructures.dft_set = [None] * len(subdirectories)
-
-    # cd to the subdirectories, submit jobs and rememeber the structure_index
-    for subdirectory in subdirectories:
-
-        os.chdir(subdirectory)
-        self.Cscheduler.run_submission_script(job_filename=job_filename)
-        job_id = self.Cscheduler.job_ids[-1]
-        
-        cwd = os.getcwd()
-        structure_index - int(cwd.split('_')[-1])
-
-        self.Cscheduler.job_info[f'{job_id}']['structure_index'] = structure_index
-
+        # cd to base_directory
         os.chdir(base_directory)
 
-    # Check job status
-    while len(self.Cscheduler.job_ids) > 0:
+        # Get a list of all the subdirectories sorted by the structure index
+        subdirectories = sorted(glob.glob(f'{prefix}*'), key=lambda x: int(x.split('_')[-1]))
 
-        for job_id in self.Cscheduler.job_ids:
+        # Initialize self.Cstructures.dft_set with None
+        self.Cstructures.dft_set = [None] * len(subdirectories)
 
-            result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+        # cd to the subdirectories, submit jobs and rememeber the structure_index
+        for subdirectory in subdirectories:
 
-            # Job not running anymore
-            if len(result.strip()) == 0:
+            os.chdir(subdirectory)
+            self.Cscheduler.run_submission_script(job_filename=job_filename)
+            job_id = self.Cscheduler.job_ids[-1]
 
-                print(f'Job {job_id} has completed.')
-                self.Cscheduler.job_ids.remove(job_id)
-                self.Cscheduler.job_info[f'{job_id}']['job_status'] = 'FINISHED'
+            cwd = os.getcwd()
+            structure_index - int(cwd.split('_')[-1])
 
-            # Job still exists
+            self.Cscheduler.job_info[f'{job_id}']['structure_index'] = structure_index
+
+            os.chdir(base_directory)
+
+        # Check job status
+        while len(self.Cscheduler.job_ids) > 0:
+
+            for job_id in self.Cscheduler.job_ids:
+
+                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+
+                # Job not running anymore
+                if len(result.strip()) == 0:
+
+                    print(f'Job {job_id} has completed.')
+                    self.Cscheduler.job_ids.remove(job_id)
+                    self.Cscheduler.job_info[f'{job_id}']['job_status'] = 'FINISHED'
+
+                # Job still exists
             else: 
                 self.Cscheduler.check_job_status(job_id, result)
 
-        # Wait a second before checking again
-        time.sleep(10)
+            # Wait a second before checking again
+            time.sleep(10)
 
-        # Check if 'FINISHED' jobs exited correctly
-        # store the structure along with the calculated energy and forces in self.Cstructures.dft_set
+            # Check if 'FINISHED' jobs exited correctly
+            # store the structure along with the calculated energy and forces in self.Cstructures.dft_set
 
-        for job_id, job_info in self.Cscheduler.jobs_info.items():
+            for job_id, job_info in self.Cscheduler.jobs_info.items():
 
-            if job_info['job_status'] == 'FINISHED'
+                if job_info['job_status'] == 'FINISHED':
 
-                directory = job_info['directory']
-                structure_index = job_info['structure_index']
-                outcar_file = os.path.join(directory, 'OUTCAR')
+                    directory = job_info['directory']
+                    structure_index = job_info['structure_index']
+                    outcar_file = os.path.join(directory, 'OUTCAR')
 
-                # Check if OUTCAR exists
+                    # Check if OUTCAR exists
 
-                if os.path.exists(outcar_file):
-                    with open(outcar_file) as f:
-                        structure = read(f)
-                        out_lines = f.readlines()
-                    
-                    # Check for convergence
-                    for line in out_lines:
-                        if 'Voluntary' in line:
-                            self.Cstructures.dft_set[structure_index] = structures
-                        # if not there the calculation died somewhere along the way and is thus 'NOT CONVERGED'
-                        else:
-                            self.Cscheduler.job_info[f'{job_id}'] = 'NOT CONVERGED'
+                    if os.path.exists(outcar_file):
+                        with open(outcar_file) as f:
+                            structure = read(f)
+                            out_lines = f.readlines()
 
-                else: 
-                    self.Cscheduler.job_info[f'{job_id}'] = 'CALCULATION_FAILED'
+                        # Check for convergence
+                        for line in out_lines:
+                            if 'Voluntary' in line:
+                                self.Cstructures.dft_set[structure_index] = structures
+                            # if not there the calculation died somewhere along the way and is thus 'NOT CONVERGED'
+                            else:
+                                self.Cscheduler.job_info[f'{job_id}'] = 'NOT CONVERGED'
 
-        # Save the converged DFT structures if specified
-        if save_traj:
-            write(traj_filename, structures)
+                    else: 
+                        self.Cscheduler.job_info[f'{job_id}'] = 'CALCULATION_FAILED'
 
-                    
+            # Save the converged DFT structures if specified
+            if save_traj:
+                write(traj_filename, structures)
+
+
 #
 
 

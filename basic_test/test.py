@@ -92,10 +92,9 @@ print(f'Created files for a batch LAMMPS minimization in {batch_minimization_tes
 
 camus_object.Cdft.dft_parameters = {}
 
-dft_test_directory = os.path.join(os.environ.get('CAMUS_DFT_DIR'), 'dft_test_dir')
-camus_object.Cdft.write_POSCAR('test.traj', target_directory=dft_test_directory)
-camus_object.Cdft.create_dft_calculation(target_directory=dft_test_directory)
+batch_dft_directory = os.path.join(os.environ.get('CAMUS_DFT_DIR'), 'dft_test_dir')
+camus_object.create_batch_dft(base_directory=batch_dft_directory, input_structures=candidate_structs)
 
-print(f'Created files for a DFT calculation in {dft_test_directory}')
+print(f'Created files for batch DFT calculation in {batch_dft_directory}')
 
 print('Test OK')

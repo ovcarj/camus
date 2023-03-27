@@ -39,14 +39,6 @@ class DFT(ABC):
     def set_dft_parameters(self, **kwargs):
         ...
 
-    @abstractmethod
-    def create_dft_calculation(self, target_directory=None, path_to_potcar=None):
-        ...
-
-    @abstractmethod
-    def parse_dft_output(self, target_directory=None):
-        ...
-
 class VASP(DFT):
 
     def __init__(self, dft_parameters=None):
@@ -106,7 +98,7 @@ class VASP(DFT):
     #Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
  
         # Read input structure (temporary index)
-        data = read(input_structure, index=0)
+#       data = read(input_structure, index=0)
 
         # Set default target_directory 
         if target_directory is None:
@@ -120,11 +112,10 @@ class VASP(DFT):
 
         # Write the POSCAR file to the target directory
         from ase.io import write
-        write(os.path.join(target_directory, 'POSCAR'), data, format='vasp')
+        write(os.path.join(target_directory, 'POSCAR'), input_structure, format='vasp')
 
-    #this should probably go into camus.py
-    def create_dft_calculation(self, target_directory=None, path_to_potcar=None):
-       
+    @staticmethod
+    def write_VASP_sub(target_directory=None, job_filename='sub.sh'):
         # Set default target_directory 
         if target_directory is None:
             target_directory = os.environ.get('CAMUS_DFT_DIR')
@@ -135,131 +126,26 @@ class VASP(DFT):
         if not os.path.exists(target_directory):
             os.makedirs(target_directory)
 
-        # Set parameters if the user didn't set them explicitly beforehand
-        if not self.dft_parameters:
-            self.set_dft_parameters()
+        # Write the submission script to the target directory
+        with open(os.path.join(target_directory, job_filename), 'w') as f:
+            f.write(f"""!/bin/bash                                                          
+#SBATCH --partition=cm
+#SBATCH --job-name=vasp-matula
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=200gb
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=48
+#SBATCH --output=%x-%j.out
+#SBATCH --error=%x-%j.err
+#SBATCH --time=1-20
 
-        # Define the INCAR file content
-        incar_content = "#DFT_PARAMETERS\n"
-        for key, value in self.dft_parameters.items():
-            if value is not None:
-                incar_content += f"  {key} = {self._dft_parameters[key]}\n"
-        incar_content += "/\n"
+module purge
+module load VASP/6.3.1
 
-        # Write the INCAR file to the target directory
-        with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
-            f.write(incar_content)
+export MKL_CBWR="AVX2"
+export I_MPI_FABRICS=shm:ofi
+ulimit -s unlimited
 
-        # The path to POTCAR
-        if path_to_potcar is None:
-            path_to_potcar = os.environ.get('DFT_POTCAR')
 
-###
-    # Will go into camus.py but I don't want to fuck with that just yet
-    def create_batch_dft(self, base_directory, input_structures=None, dft_parameters=None, prefix='dft', schedule=True, job_filename='sub.sh'):
+mpiexec.hydra -bootstrap slurm -n $SLURM_NTASKS vasp_std > log""")
 
-        if input_structures is None:
-            input_structures = [/something/] # from where am I actually getting the DFT structures?
-
-        # Set dft_parameters
-        if dft_parameters is not None:
-            self.dft_parameters = dft_parameters
-        else:
-            self.dft_parameters = {}
-
-        # Create base directory if it does not exist
-        if not os.path.exists(base_directory):
-            os.makedirs(base_directory)
-
-        # Special case of single input structure:
-        if isinstance(input_structures, Atoms): input_structures = [input_structures]
-
-        # Write the dft files
-        for i, structure in enumerate(input_structures):
-            target_directory = os.path.join(base_directory, f'{prefix}_{i}')
-            self.create_dft_calculation(target_directory=target_directory)
-            self.Cdft.write_POSCAR(input_structure=structure, target_directory=target_directory)
-            if schedule:
-                self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
-
-    def run_batch_dft(self, base_directory,prefix='dft', save_traj=True, traj_filename='dft_structures.traj', job_filename='sub.sh')
-
-    # cd to base_directory
-    os.chdir(base_directory)
-
-    # Get a list of all the subdirectories sorted by the structure index
-    subdirectories = sorted(glob.glob(f'{prefix}*'), key=lambda x: int(x.split('_')[-1]))
-
-    # Initialize self.Cstructures.dft_set with None
-    self.Cstructures.dft_set = [None] * len(subdirectories)
-
-    # cd to the subdirectories, submit jobs and rememeber the structure_index
-    for subdirectory in subdirectories:
-
-        os.chdir(subdirectory)
-        self.Cscheduler.run_submission_script(job_filename=job_filename)
-        job_id = self.Cscheduler.job_ids[-1]
-        
-        cwd = os.getcwd()
-        structure_index - int(cwd.split('_')[-1])
-
-        self.Cscheduler.job_info[f'{job_id}']['structure_index'] = structure_index
-
-        os.chdir(base_directory)
-
-    # Check job status
-    while len(self.Cscheduler.job_ids) > 0:
-
-        for job_id in self.Cscheduler.job_ids:
-
-            result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
-
-            # Job not running anymore
-            if len(result.strip()) == 0:
-
-                print(f'Job {job_id} has completed.')
-                self.Cscheduler.job_ids.remove(job_id)
-                self.Cscheduler.job_info[f'{job_id}']['job_status'] = 'FINISHED'
-
-            # Job still exists
-            else: 
-                self.Cscheduler.check_job_status(job_id, result)
-
-        # Wait a second before checking again
-        time.sleep(10)
-
-        # Check if 'FINISHED' jobs exited correctly
-        # store the structure along with the calculated energy and forces in self.Cstructures.dft_set
-
-        for job_id, job_info in self.Cscheduler.jobs_info.items():
-
-            if job_info['job_status'] == 'FINISHED'
-
-                directory = job_info['directory']
-                structure_index = job_info['structure_index']
-                outcar_file = os.path.join(directory, 'OUTCAR')
-
-                # Check if OUTCAR exists
-
-                if os.path.exists(outcar_file):
-                    with open(outcar_file) as f:
-                        structure = read(f)
-                        out_lines = f.readlines()
-                    
-                    # Check for convergence
-                    for line in out_lines:
-                        if 'Voluntary' in line:
-                            self.Cstructures.dft_set[structure_index] = structures
-                        # if not there the calculation died somewhere along the way and is thus 'NOT CONVERGED'
-                        else:
-                            self.Cscheduler.job_info[f'{job_id}'] = 'NOT CONVERGED'
-
-                else: 
-                    self.Cscheduler.job_info[f'{job_id}'] = 'CALCULATION_FAILED'
-
-        # Save the converged DFT structures if specified
-        if save_traj:
-            write(traj_filename, structures)
-
-                    
-###
