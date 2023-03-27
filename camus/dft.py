@@ -178,7 +178,7 @@ class VASP(DFT):
         for i, structure in enumerate(input_structures):
             target_directory = os.path.join(base_directory, f'{prefix}_{i}')
             self.create_dft_calculation(target_directory=target_directory)
-            write_POSCAR(input_structure=structure, target_directory=target_directory)
+            self.Cdft.write_POSCAR(input_structure=structure, target_directory=target_directory)
             if schedule:
                 self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
