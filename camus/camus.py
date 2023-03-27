@@ -13,6 +13,7 @@ import time
 import glob
 import numpy as np
 import pickle
+import shutil #
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
@@ -626,8 +627,14 @@ class Camus:
             f.write(incar_content)
 
         # The path to POTCAR
-        if path_to_potcar is None:
-            path_to_potcar = os.environ.get('DFT_POTCAR')
+        #if path_to_potcar is None:
+        #    path_to_potcar = os.environ.get('DFT_POTCAR')
+
+        # Path to POTCAR (temp)
+        path_to_potcar = '/home/radovan/Downloads/POTCAR'
+
+        # Copy POTCAR into target_directory
+        shutil.copy(path_to_potcar, target_directory)
 
 ###
     def create_batch_dft(self, base_directory, input_structures=None, dft_parameters=None, prefix='dft', schedule=True, job_filename='sub.sh'):
