@@ -94,7 +94,7 @@ camus_object.Cdft.dft_parameters = {}
 
 dft_test_directory = os.path.join(os.environ.get('CAMUS_DFT_DIR'), 'dft_test_dir')
 camus_object.Cdft.write_POSCAR('test.traj', target_directory=dft_test_directory)
-camus_object.Cdft.assemble_dft_calculation(target_directory=dft_test_directory)
+camus_object.Cdft.create_dft_calculation(target_directory=dft_test_directory)
 
 print(f'Created files for a DFT calculation in {dft_test_directory}')
 
