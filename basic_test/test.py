@@ -32,7 +32,6 @@ unique_structs2 = camus_object.Cstructures.find_unique_structures(reference_set_
 print(f'Found {len(unique_structs)} unique structures.')
 print(f'Found {len(unique_structs2)} unique structures.')
 
-
 empty = camus.Camus(structs)
 
 print(f'Created camus object without any structures.')
@@ -90,5 +89,12 @@ batch_minimization_test_directory = os.path.join(os.environ.get('CAMUS_LAMMPS_MI
 camus_object.create_batch_minimization(base_directory=batch_minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
 
 print(f'Created files for a batch LAMMPS minimization in {batch_minimization_test_directory}')
+
+camus_object.Cdft.dft_parameters = {}
+
+batch_dft_directory = os.path.join(os.environ.get('CAMUS_DFT_DIR'), 'dft_test_dir')
+camus_object.create_batch_dft(base_directory=batch_dft_directory, input_structures=candidate_structs)
+
+print(f'Created files for batch DFT calculation in {batch_dft_directory}')
 
 print('Test OK')
