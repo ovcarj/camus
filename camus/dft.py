@@ -1,17 +1,7 @@
 """ Definition of the DFT class.
 
-This module does fuck all right now.
+This module defines everything regarding the DFT input.
 
-- create dft input structure
--- specifically VASP input -- POSCAR
--[ab] set dft calculation parameters
--[ab] assemble DFT calculation (POSCAR - from create_dft_input, INCAR - based on the parameters, POTCAR - defaultly what Ivor provided (introduce env variable for default) )
-- (run)
--[ab] parse dft output (OUTCAR -> .traj)
-
--- add env variable for deffault DFT directory for testing purposes
-
-!! we should add tracking of the DFT process and check for convergence, I have a bash script for this if it is of any help !!
 """
 
 import os
@@ -26,7 +16,7 @@ class DFT(ABC):
         Initializes a new DFT object.
 
         Parameters:
-            dft_parameters: (...)
+            dft_parameters: INCAR parameters (currently limited purely to a handful of parameters we deemed necessary for a succesful yet fast SCF calculation)
 
         """
 
@@ -59,9 +49,10 @@ class VASP(DFT):
         del self._dft_parameters
 
     def set_dft_parameters(self, **kwargs):
-        """ Method that sets parameters to be written in the 
+        """ 
+        Method that sets parameters to be written in the 
         INCAR file to self._dft_parameters dictionary.
-
+        
         """
        
         default_parameters= {
@@ -93,12 +84,11 @@ class VASP(DFT):
     
     @staticmethod
     def write_POSCAR(input_structure, target_directory=None):
-    #If you're calling this function you obviously want to make a POSCAR out of your trajectory so it would stand to reason you have an input structure.
-
-    #Fucking specorder: from what I can tell the write_vasp method keeps the order from the input trajecotry file unless you specify differently (then it will chose alphabetical order), but seeing as the files throughout the camus algorithm are repeatedly ordered in out desired 'Br I Cs Pb', zet another ordering doesn't seem necessary. 
+        """ Method which writes standart VASP input structure file -- POSCAR, using ASE Atoms object (input_structure MUST be provided).
+        'target_directory' defaultly (if not specified otherwise) set to 'CAMUS_DFT_DIR'
+        
+        """
  
-        # Read input structure (temporary index)
-#       data = read(input_structure, index=0)
 
         # Set default target_directory 
         if target_directory is None:
@@ -116,6 +106,9 @@ class VASP(DFT):
 
     @staticmethod
     def write_VASP_sub(target_directory=None, job_filename='sub.sh'):
+        """Temporary mathod which crates a sub.sh submission script specific to VASP calculation.
+        
+        """
         # Set default target_directory 
         if target_directory is None:
             target_directory = os.environ.get('CAMUS_DFT_DIR')

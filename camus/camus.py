@@ -600,6 +600,12 @@ class Camus:
 
 ###
     def create_dft_calculation(self, target_directory=None, path_to_potcar=None):
+        """
+        Method which in one directory assembles files necessary for a DFT (VASP) calculation (save for POSCAR which is created with Cdft.write_POSCAR)
+        If `target_directory` is not given, `$CAMUS_DFT_DIR` is used.
+        If `path_to_potcar` is not provided, default POTCAR at `(...)` is used (with specorder: Br I Cs Pb)
+
+        """
        
         # Set default target_directory 
         if target_directory is None:
@@ -638,6 +644,20 @@ class Camus:
 
 ###
     def create_batch_dft(self, base_directory, input_structures=None, dft_parameters=None, prefix='dft', schedule=True, job_filename='sub.sh'):
+        """
+        Method that creates a number of `input_structures` directories in `base_directory` with the names
+        `prefix`_(# of structure) that contains all files necessary SCF DFT calculation. 
+        If `input_structures` is not given, self.Cstructures.structures is used.
+ 
+        Parameters:
+            base_directory: directory in which to create the directories for DFT SCF calculation
+            input_structures: list of ASE Atoms object which will have an SCF calculation done (intended to be the output of LAMMPs minimization) 
+            dft_parameters: parameters which go into an INCAR for a succesful and fast SCF calculation
+            prefix: prefix for the names of the minimization directories 
+            schedule: if True, write a submission script to each directory
+            job_filename: name of the submission script
+ 
+        """
 
         # Set default input_structues if not specified
         if input_structures is None:
@@ -666,7 +686,22 @@ class Camus:
                 #self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
                 self.Cdft.write_VASP_sub(target_directory=target_directory, job_filename=job_filename)
 
-    def run_batch_dft(self, base_directory,prefix='dft', save_traj=True, traj_filename='dft_structures.traj', job_filename='sub.sh'):
+    def run_batch_dft(self, base_directory, prefix='dft', save_traj=True, traj_filename='dft_structures.traj', job_filename='sub.sh'):
+        """
+         Intended to be used in conjuction with create_batch_dft.
+         Method that runs all SCF calculations in subdirectories of `base_directory` and stores the converged structures in self.Cstructures.dft_set. 
+         If `save_traj` is True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
+         It is assumed the subdirectories names end with a structure index {_1, _2, ...} so that the ordering of structures created by create_batch_dft is preserved.
+ 
+         Parameters:
+             base_directory: directory in which the subdirectories with minimization files are given
+             prefix: prefix of the subdirectory names
+             save_traj: if True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
+             traj_filename: specifies the name of the output trajectory file
+             job_filename: name of the submission script
+
+         """
+
 
         # cd to base_directory
         os.chdir(base_directory)
@@ -706,8 +741,8 @@ class Camus:
                     self.Cscheduler.job_info[f'{job_id}']['job_status'] = 'FINISHED'
 
                 # Job still exists
-            else: 
-                self.Cscheduler.check_job_status(job_id, result)
+                else: 
+                    self.Cscheduler.check_job_status(job_id, result)
 
             # Wait a second before checking again
             time.sleep(10)
@@ -731,6 +766,7 @@ class Camus:
                             out_lines = f.readlines()
 
                         # Check for convergence
+
                         for line in out_lines:
                             if 'Voluntary' in line:
                                 self.Cstructures.dft_set[structure_index] = structures
@@ -745,7 +781,5 @@ class Camus:
             if save_traj:
                 write(traj_filename, structures)
 
-
-#
 
 
