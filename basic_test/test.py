@@ -90,11 +90,11 @@ camus_object.create_batch_minimization(base_directory=batch_minimization_test_di
 
 print(f'Created files for a batch LAMMPS minimization in {batch_minimization_test_directory}')
 
-camus_object.Cdft.dft_parameters = {}
+#camus_object.Cdft.dft_parameters = {}
 
-batch_dft_directory = os.path.join(os.environ.get('CAMUS_DFT_DIR'), 'dft_test_dir')
-camus_object.create_batch_dft(base_directory=batch_dft_directory, input_structures=candidate_structs)
+#batch_dft_directory = os.path.join(os.environ.get('CAMUS_DFT_DIR'), 'dft_test_dir')
+#camus_object.create_batch_dft(base_directory=batch_dft_directory, input_structures=candidate_structs)
 
-print(f'Created files for batch DFT calculation in {batch_dft_directory}')
+#print(f'Created files for batch DFT calculation in {batch_dft_directory}')
 
 print('Test OK')

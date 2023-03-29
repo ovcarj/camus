@@ -153,51 +153,56 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
                 'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': 0}
 
 
-    def check_job_status(self, job_id, max_queuetime, max_runtime, squeue_result=None):
+    def check_job_status(self, job_id, max_queuetime, max_runtime):
         """ Checks whether a job is queueing, running or failed.
             If max_queuetime or max_runtime (in seconds) has ellapsed, cancel the job.
-            Result of squeue -h -j [job_id] may be already passed to avoid jobs finishing as this method is called.
         """
 
         current_time = time.time()
 
-        if squeue_result is None:
-            result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
-        else: result = squeue_result
+        squeue_result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)], stderr=subprocess.DEVNULL)
 
-        self.jobs_info[f'{job_id}']['job_status'] = result.strip().split()[4].decode('utf-8')
+        # Job completed (not running anymore)
+        if len(squeue_result.strip()) == 0:
+            self.job_ids.remove(job_id)
+            self.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
 
-        # Job in queue
-        if self.jobs_info[f'{job_id}']['job_status'] == 'PD':
+        # Job still running
+        else:
 
-            self.jobs_info[f'{job_id}']['queue_time'] = current_time - self.jobs_info[f'{job_id}']['submission_time']
+            self.jobs_info[f'{job_id}']['job_status'] = squeue_result.strip().split()[4].decode('utf-8')
+
+            # Job in queue
+            if self.jobs_info[f'{job_id}']['job_status'] == 'PD':
+
+                self.jobs_info[f'{job_id}']['queue_time'] = current_time - self.jobs_info[f'{job_id}']['submission_time']
 
             # Job waited too long
-            if self.jobs_info[f'{job_id}']['queue_time'] > max_queuetime:
-                self.jobs_info[f'{job_id}']['job_status'] = 'MAX_QUEUE_TIME_ELLAPSED'
+                if self.jobs_info[f'{job_id}']['queue_time'] > max_queuetime:
+                    self.jobs_info[f'{job_id}']['job_status'] = 'MAX_QUEUE_TIME_ELLAPSED'
+                    self.job_ids.remove(job_id)
+                    subprocess.run(["scancel", job_id])
+
+            # Job failed for some reason
+            elif self.jobs_info[f'{job_id}']['job_status'] in ['BF', 'CA', 'DL', 'F', 'NF', 'PR', 'ST', 'TO']:
                 self.job_ids.remove(job_id)
                 subprocess.run(["scancel", job_id])
 
-        # Job failed for some reason
-        elif self.jobs_info[f'{job_id}']['job_status'] in ['BF', 'CA', 'DL', 'F', 'NF', 'PR', 'ST', 'TO']:
-            self.job_ids.remove(job_id)
-            subprocess.run(["scancel", job_id])
+            # Job running
+            elif self.jobs_info[f'{job_id}']['job_status'] == 'R':
 
-        # Job running
-        elif self.jobs_info[f'{job_id}']['job_status'] == 'R':
+                # Check if this is the first instance of seeing the job running
+                if self.jobs_info[f'{job_id}']['run_time'] == 0:
+                    self.jobs_info[f'{job_id}']['start_time'] = current_time
 
-            # Check if this is the first instance of seeing the job running
-            if self.jobs_info[f'{job_id}']['run_time'] == 0:
-                self.jobs_info[f'{job_id}']['start_time'] = current_time
+                self.jobs_info[f'{job_id}']['run_time'] = current_time - self.jobs_info[f'{job_id}']['start_time']
 
-            self.jobs_info[f'{job_id}']['run_time'] = current_time - self.jobs_info[f'{job_id}']['start_time']
+                # Job running too long
+                if self.jobs_info[f'{job_id}']['run_time'] > max_runtime:
+                    self.jobs_info[f'{job_id}']['job_status'] = 'MAX_RUN_TIME_ELLAPSED'
+                    self.job_ids.remove(job_id)
+                    subprocess.run(["scancel", job_id])
 
-            # Job running too long
-            if self.jobs_info[f'{job_id}']['run_time'] > max_runtime:
-                self.jobs_info[f'{job_id}']['job_status'] = 'MAX_RUN_TIME_ELLAPSED'
-                self.job_ids.remove(job_id)
-                subprocess.run(["scancel", job_id])
-
-        # Transient job status - hopefully nothing special is happening
-        else: pass
+            # Transient job status - hopefully nothing special is happening
+            else: pass
 

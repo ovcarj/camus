@@ -13,7 +13,7 @@ import time
 import glob
 import numpy as np
 import pickle
-import shutil #
+import shutil 
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
@@ -541,19 +541,7 @@ class Camus:
         while len(self.Cscheduler.job_ids) > 0:
 
             for job_id in self.Cscheduler.job_ids:
-
-                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
-
-                # Job completed (not running anymore)
-                if len(result.strip()) == 0:
-
-                    print(f'Job {job_id} has completed')
-                    self.Cscheduler.job_ids.remove(job_id)
-                    self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
-
-                # Job still exists
-                else:
-                    self.Cscheduler.check_job_status(job_id, max_queuetime, max_runtime, result)
+                self.Cscheduler.check_job_status(job_id, max_queuetime, max_runtime)
 
             # Wait for some time before checking status again
             time.sleep(10)
