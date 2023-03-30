@@ -584,6 +584,8 @@ class Camus:
                 clean_minimizations = [structure for structure in self.Cstructures.minimized_set if structure is not None]
                 write(os.path.join(f'{base_directory}', traj_filename), clean_minimizations)
 
+        self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
+
     def parse_batch_lammps(self, specorder, jobs_info, calculation_type, results_structure_filename=None):
         """
         Parses finished LAMMPS calculations in directories given by `jobs_info`. Only `calculation_type`=='LAMMPS_minimization' is implemented for now.
