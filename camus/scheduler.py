@@ -161,7 +161,10 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
 
         current_time = time.time()
 
-        squeue_result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)], stderr=subprocess.DEVNULL)
+        try:
+            squeue_result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)], stderr=subprocess.DEVNULL)
+        except:
+            squeue_result = b''
 
         # Job completed (not running anymore)
         if len(squeue_result.strip()) == 0:

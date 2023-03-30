@@ -16,9 +16,7 @@ import pickle
 import shutil 
 
 from ase import Atoms
-from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import write
-from ase.io.lammpsrun import read_lammps_dump
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
@@ -109,9 +107,9 @@ class Camus:
 
         # Set initial_lammps_parameters 
         if initial_lammps_parameters is not None:
-            self._initial_lammps_parameters = initial_lammps_parameters
+            self.initial_lammps_parameters = initial_lammps_parameters
         else:
-            self._initial_lammps_parameters = {}
+            self.initial_lammps_parameters = {}
  
         # Write initial_lammps.in file for PE calculation
         initial_sisyphus_ins = Sisyphus(lammps_parameters=initial_lammps_parameters)
@@ -165,9 +163,9 @@ class Camus:
         
         # Set initial_lammps_parameters 
         if initial_lammps_parameters is not None:
-            self._initial_lammps_parameters = initial_lammps_parameters
+            self.initial_lammps_parameters = initial_lammps_parameters
         else:
-            self._initial_lammps_parameters = {}
+            self.initial_lammps_parameters = {}
 
         # Create base directory if it does not exist
         if not os.path.exists(base_directory):
@@ -208,11 +206,8 @@ class Camus:
                             self.Cscheduler.set_scheduler_parameters(run_command=run_command)
                             self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
-    def run_batch_sisyphus(self, base_directory, specorder, prefix='sis', 
-            max_runtime=120000, max_queuetime=10800, job_filename='sub.sh'):
+    def run_batch_sisyphus(self, base_directory, specorder, prefix='sis', job_filename='sub.sh'):
         """
-        TODO: run_batch_sisyphus could easily be split into 2-3 methods (e.g. batch_run, analyze results, etc...) Keeping it as it is for now because it works for fast calculations, but could be an issue for long ones.
-
         Intended to be used in conjuction with create_batch_sisyphus.
         Method that runs all Sisyphus runs in subdirectories of `base_directory` and stores the found
         transitions in self.Cstructures.transitions . 
@@ -223,26 +218,14 @@ class Camus:
             base_directory: directory in which the subdirectories with minimization files are given
             specorder: names of atom types in the LAMMPS minimization
             prefix: prefix of the subdirectory names
-            max_runtime [seconds]: if a calculation is still running after max_runtime, cancel and disregard it
-            max_queuetime [seconds]: if calculations are still queueing after max_queuetime, cancel and disregard it
             job_filename: name of the submission script
 
         """
+        # Get cwd so we can return to it at the end of the method
+        start_cwd = os.getcwd()
+
         # cd to base_directory
         os.chdir(base_directory)
-
-        # Make directories to store transitions
-        os.mkdir('minima')
-        os.mkdir('saddlepoints')
-        os.mkdir('transitions')
-        os.mkdir('transitions/passed')
-        os.mkdir('transitions/failed')
-
-        minima_directory = os.path.abspath('minima')
-        saddlepoints_directory = os.path.abspath('saddlepoints')
-        transitions_directory = os.path.abspath('transitions')
-        transitions_passed_directory = os.path.abspath('transitions/passed')
-        transitions_failed_directory = os.path.abspath('transitions/failed')
 
         # Get a list of all the subdirectories sorted by the structure index, transition energy index, delta_e_final index, calc#
         subdirectories = sorted(glob.glob(f'{prefix}_*'), key=lambda x: [int(i) for i in x.split('_')[1:]])
@@ -263,36 +246,42 @@ class Camus:
 
             os.chdir(base_directory)
 
-        # Check job status 
-        while len(self.Cscheduler.job_ids) > 0:
+        # Save initial jobs info to pickle files
+        self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
-            for job_id in self.Cscheduler.job_ids:
+        os.chdir(start_cwd)
 
-                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
+    def parse_batch_sisyphus(self, base_directory, jobs_info, specorder, prefix='sis'):
 
-                # Job completed (not running anymore)
-                if len(result.strip()) == 0:
+        # Get cwd so we can return to it at the end of the method
+        start_cwd = os.getcwd()
 
-                    print(f'Job {job_id} has completed')
-                    self.Cscheduler.job_ids.remove(job_id)
-                    self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
+        # Make directories to store transitions
+        os.chdir(base_directory)
 
-                # Job still exists
-                else:
-                    self.Cscheduler.check_job_status(job_id, max_queuetime, max_runtime, result)
+        os.makedirs('minima', exist_ok=True)
+        os.makedirs('saddlepoints', exist_ok=True)
+        os.makedirs('transitions', exist_ok=True)
+        os.makedirs('transitions/passed', exist_ok=True)
+        os.makedirs('transitions/failed', exist_ok=True)
 
-            # Wait for some time before checking status again
-            time.sleep(10)
+        minima_directory = os.path.abspath('minima')
+        saddlepoints_directory = os.path.abspath('saddlepoints')
+        transitions_directory = os.path.abspath('transitions')
+        transitions_passed_directory = os.path.abspath('transitions/passed')
+        transitions_failed_directory = os.path.abspath('transitions/failed')
 
         # Check if jobs with job_status == 'FINISHED' exited correctly, read the transitions
         # energies & forces, store the structures in self.Cstructures.minimization_set
-
-        for job_id, job_info in self.Cscheduler.jobs_info.items():
+ 
+        for job_id, job_info in jobs_info.items():
 
             if job_info['job_status'] == 'FINISHED':
 
                 calculation_index = job_info['calculation_index']
                 calculation_label = job_info['calculation_label']
+
+                # Initialize Sisyphus dictionary
 
                 self.sisyphus_dictionary[f'{calculation_label}'] = {}
  
@@ -360,47 +349,19 @@ class Camus:
                     
                         for i, minimum_filename in enumerate(minima_files):
 
-                            saddlepoint_filename = saddlepoint_files[i]
                             minimum_energy = self.sisyphus_dictionary[f'{calculation_label}']['minima_energies'][i]
-                            saddlepoint_energy = self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_energies'][i]
-
-                            # This will be moved to a method in Structures, for now code repeats for minimum and saddlepoint
-                            with open(minimum_filename) as f:
-                                lines = f.readlines()
-
-                            cell=np.array(lines[1].strip().split(' ')[1:10], dtype='float').reshape(3, 3, order='F')
-                            positions = np.loadtxt(minimum_filename, skiprows=2, usecols=(1, 2, 3))
-                            forces = np.loadtxt(minimum_filename, skiprows=2, usecols=(4, 5, 6))
-                            
-                            atom_types = []
-
-                            for line in lines[2:]:
-                                atom_id = int(line.strip()[0])
-                                atom_types.insert(-1, specorder[atom_id - 1])
-
-                            minimum_atoms=Atoms(symbols=atom_types, positions=positions, pbc=True, cell=cell)
-                            minimum_atoms.calc = SinglePointCalculator(minimum_atoms, energy=minimum_energy, forces=forces)
-
-                            with open(saddlepoint_filename) as f:
-                                lines = f.readlines()
-
-                            cell=np.array(lines[1].strip().split(' ')[1:10], dtype='float').reshape(3, 3, order='F')
-                            positions = np.loadtxt(saddlepoint_filename, skiprows=2, usecols=(1, 2, 3))
-                            forces = np.loadtxt(saddlepoint_filename, skiprows=2, usecols=(4, 5, 6))
-                            
-                            atom_types = []
-
-                            for line in lines[2:]:
-                                atom_id = int(line.strip()[0])
-                                atom_types.insert(-1, specorder[atom_id - 1])
-
-                            saddlepoint_atoms=Atoms(symbols=atom_types, positions=positions, pbc=True, cell=cell)
-                            saddlepoint_atoms.calc = SinglePointCalculator(saddlepoint_atoms, energy=saddlepoint_energy, forces=forces)
-
-                            self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].append(minimum_atoms)
-                            self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].append(saddlepoint_atoms)
+                            minimum_atoms = self.Cstructures.parse_sisyphus_xyz(filename=minimum_filename, energy=minimum_energy, specorder=specorder)
                             self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'].append(minimum_atoms)
+
+                        for i, saddlepoint_filename in enumerate(saddlepoint_files):
+                            saddlepoint_energy = self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_energies'][i]
+                            saddlepoint_atoms = self.Cstructures.parse_sisyphus_xyz(filename=saddlepoint_filename, energy=saddlepoint_energy, specorder=specorder)
                             self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'].append(saddlepoint_atoms)
+
+                        # Combine minima and saddlepoints to transitions
+                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'] = [None] * (len(minima_files) + len(saddlepoint_files))
+                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'][::2] = self.sisyphus_dictionary[f'{calculation_label}']['minima_structures']
+                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'][1::2] = self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures']
 
                         # Write transitions
                         if self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED':
@@ -419,9 +380,8 @@ class Camus:
                     self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
                     self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'CALCULATION_FAILED'
 
-        with open(os.path.join(f'{base_directory}', 'sisyphus_dictionary.pkl'), 'wb+') as f:
-            pickle.dump(self.sisyphus_dictionary, f)
-
+        self.Cscheduler.save_to_pickle(self.sisyphus_dictionary, os.path.join(f'{base_directory}', 'sisyphus_dictionary.pkl'))
+        os.chdir(start_cwd)
 
     def create_lammps_calculation(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
         """
@@ -503,9 +463,9 @@ class Camus:
 
     def run_batch_calculation(self, base_directory=None, prefix='minimization', job_filename='sub.sh'):
         """
-         Method that submits all calculations in subdirectories of `base_directory`.
-         It is assumed the subdirectories names end with a structure index {_1, _2, ...} so that the ordering
-         of structures created by create_batch_*_calculation() is preserved.
+         Method that submits all calculations in subdirectories of `base_directory`. For now, batch Sisyphus
+         is run via a seperate method. 
+         It is assumed the subdirectories names end with a structure index {_1, _2, ...} so that the ordering of structures created by create_batch_*_calculation() is preserved.
  
          Parameters:
              base_directory: directory in which the subdirectories with the calculation files are given
@@ -584,14 +544,17 @@ class Camus:
                 clean_minimizations = [structure for structure in self.Cstructures.minimized_set if structure is not None]
                 write(os.path.join(f'{base_directory}', traj_filename), clean_minimizations)
 
+        elif calculation_type == 'Sisyphus':
+            self.parse_batch_sisyphus(base_directory=base_directory, jobs_info=self.Cscheduler.jobs_info, specorder=specorder)
+
         self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
     def parse_batch_lammps(self, specorder, jobs_info, calculation_type, results_structure_filename=None):
         """
-        Parses finished LAMMPS calculations in directories given by `jobs_info`. Only `calculation_type`=='LAMMPS_minimization' is implemented for now.
+        Parses finished LAMMPS calculations in directories given by `jobs_info` dictionary. Only `calculation_type`=='LAMMPS_minimization' is implemented for now.
         """
 
-        for job_id, job_info in self.Cscheduler.jobs_info.items():
+        for job_id, job_info in jobs_info.items():
 
             if job_info['job_status'] == 'FINISHED':
 
