@@ -15,13 +15,13 @@ import numpy as np
 import pickle
 import shutil 
 
-from camus.structures import Structures
-from camus.sisyphus import Sisyphus
-
 from ase import Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
 from ase.io import write
 from ase.io.lammpsrun import read_lammps_dump
+
+from camus.structures import Structures
+from camus.sisyphus import Sisyphus
 
 scheduler_module = importlib.import_module('camus.scheduler')
 dft_module = importlib.import_module('camus.dft')
@@ -73,7 +73,7 @@ class Camus:
 
     def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters=None, specorder=None, atom_style='atomic'):
         """
-        Convenience method that writes all necessary files to start a Sisyphus calculation for an `input_structure` to a `target_directory`.
+        Writes all necessary files to start a Sisyphus calculation for an `input_structure` to a `target_directory`.
         If `input_structure` is not given, self.Cstructures.structures[0] is used.
         If `target_directory` is not given, `$CAMUS_SISYPHUS_DATA_DIR` is used
         If self.Csisyphus.{artn_parameters, lammps_parameters, sisyphus_parameters} is an empty dictionary, default values are generated. The provided lammps parameters should be the ones for the main lammps.in input file used by ARTn.
@@ -211,7 +211,7 @@ class Camus:
     def run_batch_sisyphus(self, base_directory, specorder, prefix='sis', 
             max_runtime=120000, max_queuetime=10800, job_filename='sub.sh'):
         """
-        TODO: run_batch_sisyphus and run_batch_minimization could easily be split into 2-3 methods (e.g. batch_run, analyze results, etc...) Keeping it as it is for now because it works for fast calculations, but could be an issue for long ones.
+        TODO: run_batch_sisyphus could easily be split into 2-3 methods (e.g. batch_run, analyze results, etc...) Keeping it as it is for now because it works for fast calculations, but could be an issue for long ones.
 
         Intended to be used in conjuction with create_batch_sisyphus.
         Method that runs all Sisyphus runs in subdirectories of `base_directory` and stores the found
@@ -422,9 +422,10 @@ class Camus:
         with open(os.path.join(f'{base_directory}', 'sisyphus_dictionary.pkl'), 'wb+') as f:
             pickle.dump(self.sisyphus_dictionary, f)
 
-    def create_lammps_minimization(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
+
+    def create_lammps_calculation(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
         """
-        Convenience method that writes all necessary files to minimize an `input_structure` with LAMMPS. 
+        Writes all necessary files to perform a calculation with LAMMPS. lammps.in parameters are read from self.Csisyphus.lammps_parameters.
         If `input_structure` is not given, self.Cstructures.structures[0] is used.
         If `target_directory` is not given, `$CAMUS_LAMMPS_MINIMIZATION_DIR` is used.
         If self.Csisyphus.lammps_parameters is an empty dictionary, default values for a LAMMPS minimization are generated.
@@ -451,7 +452,7 @@ class Camus:
         if not os.path.exists(target_directory):
             os.makedirs(target_directory)
 
-        # Write the lammps.in file for minimization
+        # Write the lammps.in file 
         if not self.Csisyphus.lammps_parameters:
             self.Csisyphus.set_lammps_parameters(minimization=True)
         self.Csisyphus.write_lammps_in(target_directory)
@@ -459,17 +460,21 @@ class Camus:
         # Write the lammps.data file
         self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
-    def create_batch_minimization(self, base_directory, specorder, input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic'):
+    def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
+            input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic'):
+
         """
         Method that creates a number of `input_structures` directories in `base_directory` with the names
-        `prefix`_(# of structure) that contains all files necessary to minimize a structure (with LAMMPS). 
+        `prefix`_(# of structure) that contains all files necessary to perform a calculation of type `calculation_type`.
         If `input_structures` is not given, self.Cstructures.structures is used.
+        Parameters for lammps.in are read from self.Csisyphus.lammps_parameters (defaults to a minimization).
  
         Parameters:
             base_directory: directory in which to create the directories for LAMMPS minimizations
             specorder: order of atom types in which to write the LAMMPS data file
-            input_structures: list of ASE Atoms object which should be minimized 
-            prefix: prefix for the names of the minimization directories 
+            calculation_type: 'LAMMPS' or 'DFT' (only 'LAMMPS' implemented for now)
+            input_structures: list of ASE Atoms object on which the calculation will be performed 
+            prefix: prefix for the names of the calculation directories 
             schedule: if True, write a submission script to each directory
             job_filename: name of the submission script
  
@@ -486,42 +491,41 @@ class Camus:
         # Special case of single input structure:
         if isinstance(input_structures, Atoms): input_structures = [input_structures]
 
-        # Write the minimization files 
+        # Write the calculation files 
         for i, structure in enumerate(input_structures):
             target_directory = os.path.join(base_directory, f'{prefix}_{i}')
-            self.create_lammps_minimization(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+
+            if calculation_type == 'LAMMPS':
+                self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+
             if schedule:
                 self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
-    def run_batch_minimization(self, base_directory, specorder, prefix='minimization', save_traj=True, 
-            traj_filename='minimized_structures.traj', max_runtime=1800, max_queuetime=3600, job_filename='sub.sh'):
+    def run_batch_calculation(self, base_directory=None, prefix='minimization', job_filename='sub.sh'):
         """
-         Intended to be used in conjuction with create_batch_minimization.
-         Method that runs all minimizations in subdirectories of `base_directory` and stores the minimized
-         structures in self.Cstructures.minimized_set. 
-         If `save_traj` is True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
+         Method that submits all calculations in subdirectories of `base_directory`.
          It is assumed the subdirectories names end with a structure index {_1, _2, ...} so that the ordering
-         of structures created by create_batch_minimization is preserved.
+         of structures created by create_batch_*_calculation() is preserved.
  
          Parameters:
-             base_directory: directory in which the subdirectories with minimization files are given
-             specorder: names of atom types in the LAMMPS minimization
+             base_directory: directory in which the subdirectories with the calculation files are given
              prefix: prefix of the subdirectory names
-             save_traj: if True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
-             max_runtime [seconds]: if a calculation is still running after max_runtime, cancel and disregard it
-             max_queuetime [seconds]: if calculations are still queueing after max_queuetime, cancel and disregard it
              job_filename: name of the submission script
 
          """
+
+        # Assume base_directory = cwd
+        if not base_directory:
+            base_directory = os.get_cwd()
+
+        # Remember cwd so we can return back at the end of the method
+        start_cwd = os.getcwd()
 
         # cd to base_directory
         os.chdir(base_directory)
 
         # Get a list of all the subdirectories sorted by the structure index
-        subdirectories = sorted(glob.glob(f'{prefix}*'), key=lambda x: int(x.split('_')[-1]))
-        
-        # Initialize self.Cstructures.minimized_set with None
-        self.Cstructures.minimized_set = [None] * len(subdirectories)
+        subdirectories = sorted(glob.glob(f'{prefix}*/'), key=lambda x: int(os.path.basename(os.path.dirname(x)).split('_')[-1])) 
 
         # cd to the subdirectories, submit jobs and remember the structure_index 
         for subdirectory in subdirectories:
@@ -537,17 +541,53 @@ class Camus:
 
             os.chdir(base_directory)
 
-        # Check job status 
-        while len(self.Cscheduler.job_ids) > 0:
+        # Save initial jobs info to pickle files
+        self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
-            for job_id in self.Cscheduler.job_ids:
-                self.Cscheduler.check_job_status(job_id, max_queuetime, max_runtime)
+        os.chdir(start_cwd)
 
-            # Wait for some time before checking status again
-            time.sleep(10)
+    def parse_batch_calculation(self, specorder=None, base_directory=None, jobs_info_dict_filename=None, calculation_type='LAMMPS_minimization',
+            save_traj=True, traj_filename='minimized_structures.traj'):
+        """
+        Note: run self.Cscheduler.check_job_list_status() before parsing to get updated jobs info.
+        Parses results from calculations of `calculation_type` in subdirectories of `base_directory`. If `base_directory` is not given,
+        cwd is assumed. If `jobs_info_dict_filename` is not given, automatically searches for a file called "*_info.pkl" in `base_directory`.
 
-        # Check if jobs with job_status == 'FINISHED' exited correctly, read the minimized structure
-        # energies & forces, store the structures in self.Cstructures.minimization_set
+        If `calculation_type`=='LAMMPS_minimization', calls parse_batch_lammps() and stores structures in self.Cstructures.minimized_set. 
+        If `save_traj`=True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
+        `specorder` must be given so LAMMPS dump can be read correctly.
+
+        TODO: `calculation_type` == 'LAMMPS_MD', 'DFT_SCF', ...
+
+
+        """
+
+        # Assume base_directory = cwd
+        if not base_directory:
+            base_directory = os.get_cwd()
+
+        # Search for jobs_info_dict
+        if not jobs_info_dict_filename:
+            jobs_info_filename = glob.glob(os.path.join(f'{base_directory}', '*_info.pkl'))[0]
+
+        self.Cscheduler.jobs_info = self.Cscheduler.load_pickle(os.path.join(f'{base_directory}', jobs_info_filename))
+
+        if calculation_type == 'LAMMPS_minimization':
+
+            # Initialize self.Cstructures.minimized_set with None
+            self.Cstructures.minimized_set = [None] * len(self.Cscheduler.jobs_info.keys())
+            self.parse_batch_lammps(specorder, self.Cscheduler.jobs_info, calculation_type, results_structure_filename='minimized.xyz')
+
+            # Save a trajectory file with minimized structures if specified
+            if save_traj:
+                # Write only succesfully minimized structures
+                clean_minimizations = [structure for structure in self.Cstructures.minimized_set if structure is not None]
+                write(os.path.join(f'{base_directory}', traj_filename), clean_minimizations)
+
+    def parse_batch_lammps(self, specorder, jobs_info, calculation_type, results_structure_filename=None):
+        """
+        Parses finished LAMMPS calculations in directories given by `jobs_info`. Only `calculation_type`=='LAMMPS_minimization' is implemented for now.
+        """
 
         for job_id, job_info in self.Cscheduler.jobs_info.items():
 
@@ -555,38 +595,21 @@ class Camus:
 
                 directory = job_info['directory']
                 structure_index = job_info['structure_index']
-                minimization_file = os.path.join(directory, 'minimized.xyz')
-                log_lammps = os.path.join(directory, 'log.lammps')
 
-                # Check if the minimized.xyz file was generated
+                # LAMMPS minimization case
+                if calculation_type == 'LAMMPS_minimization':
 
-                if os.path.exists(minimization_file):
-                    with open(minimization_file) as f:
-                        structure = read_lammps_dump(f, specorder=specorder)
+                    minimization_file = os.path.join(directory, results_structure_filename)
+                    log_lammps = os.path.join(directory, 'log.lammps')
 
-                    # Get potential energy
-                    with open(log_lammps) as f:
-                        log_lines = f.readlines()
-                    
-                    for i, line in enumerate(log_lines):
-                        if 'Energy initial, next-to-last, final =' in line:
-                            energies_line = log_lines[i+1].strip()
-                            break
-                    
-                    potential_energy = energies_line.split()[-1]
-                    structure.calc.results['energy'] = float(potential_energy)
-                    self.Cstructures.minimized_set[structure_index] = structure
+                    # Check if the minimized.xyz file was generated
 
-                else:
-                    self.Cscheduler.jobs_info[f'{job_id}'] = 'CALCULATION_FAILED'
+                    if os.path.exists(minimization_file):
+                        self.Cstructures.minimized_set[structure_index] = self.Cstructures.parse_lammps_dump(specorder, log_lammps, minimization_file)
 
-        # Save a trajectory file with minimized structures if specified
-        if save_traj:
-            # Write only succesfully minimized structures
-            clean_minimizations = [structure for structure in self.Cstructures.minimized_set if structure is not None]
-            write(traj_filename, clean_minimizations)
+                    else:
+                        self.Cscheduler.jobs_info[f'{job_id}'] = 'CALCULATION_FAILED'
 
-###
     def create_dft_calculation(self, target_directory=None, path_to_potcar=None):
         """
         Method which in one directory assembles files necessary for a DFT (VASP) calculation (save for POSCAR which is created with Cdft.write_POSCAR)
@@ -708,7 +731,7 @@ class Camus:
             job_id = self.Cscheduler.job_ids[-1]
 
             cwd = os.getcwd()
-            structure_index - int(cwd.split('_')[-1])
+            structure_index = int(cwd.split('_')[-1])
 
             self.Cscheduler.job_info[f'{job_id}']['structure_index'] = structure_index
 
@@ -768,6 +791,5 @@ class Camus:
             # Save the converged DFT structures if specified
             if save_traj:
                 write(traj_filename, structures)
-
 
 

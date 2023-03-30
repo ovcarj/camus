@@ -7,6 +7,8 @@ This module defines everything related to handling cluster scheduling.
 import os
 import subprocess
 import time
+import pickle
+import glob
 
 from abc import ABC, abstractmethod
 
@@ -152,10 +154,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
         self.jobs_info[f'{job_id}'] = {'directory': cwd, 'job_status': 'I', 
                 'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': 0}
 
-
     def check_job_status(self, job_id, max_queuetime, max_runtime):
-        """ Checks whether a job is queueing, running or failed.
-            If max_queuetime or max_runtime (in seconds) has ellapsed, cancel the job.
+        """ Checks whether a job with `job_id` is queueing, running or failed.
+            If max_queuetime or max_runtime (in seconds) has ellapsed, cancels the job.
         """
 
         current_time = time.time()
@@ -205,4 +206,47 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
 
             # Transient job status - hopefully nothing special is happening
             else: pass
+
+    def check_job_list_status(self, base_directory=None, jobs_info_filename=None, max_runtime=180000, max_queuetime=360000, sleep_time=60):
+        """ Calls self.check_job_status every `sleep_time` seconds and checks the status of all jobs in subdirectories of 
+            `base_directory`. If `base_directory` is not given, assume `base_directory` = cwd.
+            If `jobs_info_filename` is not given, automatically searches for a file named "*_info.pkl" where all the job ids
+            and other job info should be written.
+            If max_queuetime or max_runtime (in seconds) has ellapsed, cancels the job.
+        """
+
+        # Assume base_directory = cwd
+        if not base_directory:
+            base_directory = os.get_cwd()
+
+        # Search for jobs_info_dict
+        if not jobs_info_filename:
+            jobs_info_filename = glob.glob(os.path.join(f'{base_directory}', '*_info.pkl'))[0]
+
+        self.jobs_info = self.load_pickle(os.path.join(f'{base_directory}', jobs_info_filename))
+        self.job_ids = list(self.jobs_info.keys())
+
+        # Check running jobs status
+        while len(self.job_ids) > 0:
+            for job_id in self.job_ids:
+                self.check_job_status(job_id, max_queuetime, max_runtime)
+            
+            # Save updated jobs info
+            self.save_to_pickle(self.jobs_info, os.path.join(f'{base_directory}', jobs_info_filename))
+            
+            # Wait some time before checking again
+            time.sleep(sleep_time)
+
+
+    # Utility methods to save and load pickle files, may consider moving to class Utils
+
+    @staticmethod
+    def save_to_pickle(object, path_to_file):
+        with open(path_to_file, 'wb') as handle:
+            pickle.dump(object, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @staticmethod
+    def load_pickle(path_to_file):
+        with open(path_to_file, 'rb') as handle:
+            return pickle.load(handle)
 
