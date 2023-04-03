@@ -87,6 +87,7 @@ class Slurm(Scheduler):
             'mem': '7gb', 
             'nodes': '1',
             'ntasks': '1',
+            'modules': ['gnu9', 'openmpi4/4.1.1'],
             'run_command': f'{run_lammps} {lammps_exe} -in {input_file} > {output_file}' 
             }
 
@@ -127,9 +128,12 @@ class Slurm(Scheduler):
 #SBATCH --ntasks={self.scheduler_parameters['ntasks']}
 
 module purge
-module load gnu9
-module load openmpi4/4.1.1
+""")
 
+            for module in self.scheduler_parameters['modules']:
+                f.write(f"module load {module}\n")
+
+            f.write(f"""
 export MKL_CBWR="AVX2"
 export I_MPI_FABRICS=shm:ofi
 ulimit -s unlimited
