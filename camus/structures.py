@@ -9,7 +9,7 @@ import random
 import numpy as np
 import os
 
-from ase import Atoms
+from ase import Atom, Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
 
 from ase.io import write
@@ -476,3 +476,15 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
         return atoms
 
+    @staticmethod
+    def sort_atoms(input_structure, specorder):
+        """
+        Sorts an ASE Atoms object by specorder. 
+        """
+
+        atomic_numbers = [Atom(sym).number for sym in specorder]
+        atom_numbers = input_structure.get_atomic_numbers()
+        order = np.argsort([atomic_numbers.index(n) for n in atom_numbers])
+        sorted_atoms = input_structure[order]
+
+        return sorted_atoms

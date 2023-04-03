@@ -13,6 +13,8 @@ from ase import Atom
 from ase.io import read
 from ase.io import write
 
+from camus.structures import Structures
+
 class DFT(ABC):
 
     def __init__(self, dft_parameters=None):
@@ -106,10 +108,7 @@ class VASP(DFT):
             os.makedirs(target_directory)
 
         # Reorder atoms
-        atomic_numbers = [Atom(sym).number for sym in specorder]
-        atom_numbers = input_structure.get_atomic_numbers()
-        order = np.argsort([atomic_numbers.index(n) for n in atom_numbers])
-        sorted_atoms = input_structure[order]
+        sorted_atoms = Structures().sort_atoms(input_structure=input_structure, specorder=specorder) 
 
         # Write the POSCAR file to the target directory
         write(os.path.join(target_directory, 'POSCAR'), sorted_atoms, format='vasp')
