@@ -78,15 +78,8 @@ camus_object.create_sisyphus_calculation(target_directory=sisyphus_test_director
 print(f'Created files for a Sisyphus calculation in {sisyphus_test_directory}')
 
 camus_object.Csisyphus.lammps_parameters = {}
-
-minimization_test_directory = os.path.join(os.environ.get('CAMUS_LAMMPS_MINIMIZATION_DIR'), 'minimization_test_dir')
-camus_object.create_lammps_minimization(target_directory=minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
-
-print(f'Created files for a LAMMPS minimization in {minimization_test_directory}')
-
-camus_object.Csisyphus.lammps_parameters = {}
 batch_minimization_test_directory = os.path.join(os.environ.get('CAMUS_LAMMPS_MINIMIZATION_DIR'), 'batch_minimization_test_dir')
-camus_object.create_batch_minimization(base_directory=batch_minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
+camus_object.create_batch_calculation(base_directory=batch_minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'], calculation_type='LAMMPS', atom_style='charge')
 
 print(f'Created files for a batch LAMMPS minimization in {batch_minimization_test_directory}')
 

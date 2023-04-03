@@ -336,7 +336,7 @@ class Camus:
                     saddlepoint_files = sorted(glob.glob('*saddlepoint*xyz'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
 
                     if len(minima_files) > 0:
-
+                        
                         minima_energies_file = glob.glob('*minima_energies*')[0]
                         saddlepoint_energies_file = glob.glob('*saddlepoint_energies*')[0]
                         all_energies_file = glob.glob('*all_energies*')[0]
@@ -348,20 +348,21 @@ class Camus:
                         self.sisyphus_dictionary[f'{calculation_label}']['basin_counters'] = np.frombuffer(np.loadtxt(basin_counters_file))
                     
                         for i, minimum_filename in enumerate(minima_files):
-
-                            minimum_energy = self.sisyphus_dictionary[f'{calculation_label}']['minima_energies'][i]
-                            minimum_atoms = self.Cstructures.parse_sisyphus_xyz(filename=minimum_filename, energy=minimum_energy, specorder=specorder)
+                            minimum_atoms = self.Cstructures.parse_sisyphus_xyz(filename=minimum_filename, specorder=specorder)
                             self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'].append(minimum_atoms)
 
                         for i, saddlepoint_filename in enumerate(saddlepoint_files):
-                            saddlepoint_energy = self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_energies'][i]
-                            saddlepoint_atoms = self.Cstructures.parse_sisyphus_xyz(filename=saddlepoint_filename, energy=saddlepoint_energy, specorder=specorder)
+                            saddlepoint_atoms = self.Cstructures.parse_sisyphus_xyz(filename=saddlepoint_filename, specorder=specorder)
                             self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'].append(saddlepoint_atoms)
 
                         # Combine minima and saddlepoints to transitions
                         self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'] = [None] * (len(minima_files) + len(saddlepoint_files))
-                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'][::2] = self.sisyphus_dictionary[f'{calculation_label}']['minima_structures']
-                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'][1::2] = self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures']
+                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'][1::2] = self.sisyphus_dictionary[f'{calculation_label}']['minima_structures']
+                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'][::2] = self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures']
+
+                        # Initial sisyphus structure is inserted as a first point of the transition
+                        initial_sisyphus_structure = self.Cstructures.parse_lammps_dump(specorder=specorder, log_lammps='initial_lammps.out', dump_name='initial_sisyphus_structure.xyz')
+                        self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].insert(0, initial_sisyphus_structure)
 
                         # Write transitions
                         if self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED':
@@ -618,7 +619,6 @@ class Camus:
         # Copy POTCAR into target_directory
         shutil.copy(path_to_potcar, target_directory)
 
-###
     def create_batch_dft(self, base_directory, input_structures=None, dft_parameters=None, prefix='dft', schedule=True, job_filename='sub.sh'):
         """
         Method that creates a number of `input_structures` directories in `base_directory` with the names

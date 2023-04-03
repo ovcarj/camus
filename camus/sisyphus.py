@@ -190,6 +190,7 @@ class Sisyphus:
             'pair_style': 'allegro',
             'pair_coeff': f'* * {path_to_model} {specorder}',
             'thermo_style': 'custom step pe fnorm lx ly lz press pxx pyy pzz',
+            'dump': 'initialDump all custom 1 initial_sisyphus_structure.xyz type x y z fx fy fz',
             'run': '0'
              }
 
