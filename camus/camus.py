@@ -421,11 +421,61 @@ class Camus:
         # Write the lammps.data file
         self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
+    def create_vasp_calculation(self, specorder, input_structure=None, target_directory=None, path_to_potcar=None):
+        """
+        Writes all files necessary for a DFT (VASP) calculation (save for POSCAR which is created with Cdft.write_POSCAR)
+        If `target_directory` is not given, `$CAMUS_DFT_DIR` is used.
+        If `path_to_potcar` is not provided, default POTCAR at `(...)` is used. 
+
+        """
+
+        # Set the default input_structure to self.Cstructures.structures[0]
+        if input_structure is None:
+            input_structure = self.Cstructures.structures[0]
+      
+        # Set default target_directory 
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_DFT_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Set parameters if the user didn't set them explicitly beforehand
+        if not self.Cdft.dft_parameters:
+            self.Cdft.set_dft_parameters()
+
+        # Define the INCAR file content
+        incar_content = "#DFT_PARAMETERS\n"
+        for key, value in self.Cdft.dft_parameters.items():
+            if value is not None:
+                incar_content += f"  {key} = {self.Cdft._dft_parameters[key]}\n"
+        incar_content += "/\n"
+
+        # Write the INCAR file to the target directory
+        with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
+            f.write(incar_content)
+        
+        # Write POSCAR file to target directory
+        self.Cdft.write_POSCAR(input_structure=structure, target_directory=target_directory)
+
+        # The path to POTCAR
+        if path_to_potcar is None:
+            path_to_potcar = os.environ.get('DFT_POTCAR')
+
+        # Copy POTCAR into target_directory
+        try:
+            shutil.copy(path_to_potcar, target_directory)
+        except:
+            raise Exception("POTCAR file required by VASP was not found.")
+
     def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
             input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic'):
 
         """
-        Method that creates a number of `input_structures` directories in `base_directory` with the names
+        Creates a number of `input_structures` directories in `base_directory` with the names
         `prefix`_(# of structure) that contains all files necessary to perform a calculation of type `calculation_type`.
         If `input_structures` is not given, self.Cstructures.structures is used.
         Parameters for lammps.in are read from self.Csisyphus.lammps_parameters (defaults to a minimization).
@@ -433,7 +483,7 @@ class Camus:
         Parameters:
             base_directory: directory in which to create the directories for LAMMPS minimizations
             specorder: order of atom types in which to write the LAMMPS data file
-            calculation_type: 'LAMMPS' or 'DFT' (only 'LAMMPS' implemented for now)
+            calculation_type: 'LAMMPS' or 'VASP' (only 'LAMMPS' implemented for now)
             input_structures: list of ASE Atoms object on which the calculation will be performed 
             prefix: prefix for the names of the calculation directories 
             schedule: if True, write a submission script to each directory
@@ -458,6 +508,12 @@ class Camus:
 
             if calculation_type == 'LAMMPS':
                 self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+
+            elif calculation_type == 'VASP':
+                self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder)
+
+            else:
+                raise Exception(f"Calculation type {calculation_type} not implemented.")
 
             if schedule:
                 self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
@@ -518,7 +574,7 @@ class Camus:
         If `save_traj`=True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
         `specorder` must be given so LAMMPS dump can be read correctly.
 
-        TODO: `calculation_type` == 'LAMMPS_MD', 'DFT_SCF', ...
+        TODO: `calculation_type` == 'LAMMPS_MD',  ...
 
 
         """
@@ -541,12 +597,26 @@ class Camus:
 
             # Save a trajectory file with minimized structures if specified
             if save_traj:
-                # Write only succesfully minimized structures
+                # Write only successfully minimized structures
                 clean_minimizations = [structure for structure in self.Cstructures.minimized_set if structure is not None]
                 write(os.path.join(f'{base_directory}', traj_filename), clean_minimizations)
 
+        elif calculation_type == 'VASP_SCF':
+            # Initialize self.Cstructures.dft_set with None
+            self.Cstructures.dft_set = [None] * len(self.Cscheduler.jobs_info.keys())
+            self.parse_batch_vasp(jobs_info=self.Cscheduler.jobs_info, calculation_type=calculation_type)
+
+            # Save the converged DFT structures if specified
+            if save_traj:
+                # Write only successful SCFs
+                clean_scfs = [structure for structure in self.Cstructures.dft_set if structure is not None]
+                write(os.path.join(f'{base_directory}', traj_filename), clean_scfs)
+
         elif calculation_type == 'Sisyphus':
             self.parse_batch_sisyphus(base_directory=base_directory, jobs_info=self.Cscheduler.jobs_info, specorder=specorder)
+
+        else:
+            raise Exception(f"Calculation type {calculation_type} not implemented.")
 
         self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
@@ -576,185 +646,41 @@ class Camus:
                     else:
                         self.Cscheduler.jobs_info[f'{job_id}'] = 'CALCULATION_FAILED'
 
-    def create_dft_calculation(self, target_directory=None, path_to_potcar=None):
+                else:
+                    raise Exception(f"Calculation type {calculation_type} not implemented.")
+
+    def parse_batch_vasp(self, jobs_info, calculation_type):
         """
-        Method which in one directory assembles files necessary for a DFT (VASP) calculation (save for POSCAR which is created with Cdft.write_POSCAR)
-        If `target_directory` is not given, `$CAMUS_DFT_DIR` is used.
-        If `path_to_potcar` is not provided, default POTCAR at `(...)` is used (with specorder: Br I Cs Pb)
-
-        """
-       
-        # Set default target_directory 
-        if target_directory is None:
-            target_directory = os.environ.get('CAMUS_DFT_DIR')
-            if target_directory is None:
-                raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
-
-        # Create target directory if it does not exist
-        if not os.path.exists(target_directory):
-            os.makedirs(target_directory)
-
-        # Set parameters if the user didn't set them explicitly beforehand
-        if not self.Cdft.dft_parameters:
-            self.Cdft.set_dft_parameters()
-
-        # Define the INCAR file content
-        incar_content = "#DFT_PARAMETERS\n"
-        for key, value in self.Cdft.dft_parameters.items():
-            if value is not None:
-                incar_content += f"  {key} = {self.Cdft._dft_parameters[key]}\n"
-        incar_content += "/\n"
-
-        # Write the INCAR file to the target directory
-        with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
-            f.write(incar_content)
-
-        # The path to POTCAR
-        #if path_to_potcar is None:
-        #    path_to_potcar = os.environ.get('DFT_POTCAR')
-
-        # Path to POTCAR (temp)
-        path_to_potcar = '/home/radovan/Downloads/POTCAR'
-
-        # Copy POTCAR into target_directory
-        shutil.copy(path_to_potcar, target_directory)
-
-    def create_batch_dft(self, base_directory, input_structures=None, dft_parameters=None, prefix='dft', schedule=True, job_filename='sub.sh'):
-        """
-        Method that creates a number of `input_structures` directories in `base_directory` with the names
-        `prefix`_(# of structure) that contains all files necessary SCF DFT calculation. 
-        If `input_structures` is not given, self.Cstructures.structures is used.
- 
-        Parameters:
-            base_directory: directory in which to create the directories for DFT SCF calculation
-            input_structures: list of ASE Atoms object which will have an SCF calculation done (intended to be the output of LAMMPs minimization) 
-            dft_parameters: parameters which go into an INCAR for a succesful and fast SCF calculation
-            prefix: prefix for the names of the minimization directories 
-            schedule: if True, write a submission script to each directory
-            job_filename: name of the submission script
- 
+        Parses finished VASP calculations in directories given by `jobs_info` dictionary. Only `calculation_type`=='VASP_SCF' is implemented for now.
         """
 
-        # Set default input_structues if not specified
-        if input_structures is None:
-            input_structures = self.Cstructures.structures 
+        for job_id, job_info in jobs_info.items():
 
-        # Set dft_parameters
-        if dft_parameters is not None:
-            self.Cdft.dft_parameters = dft_parameters
-        else:
-            self.Cdft.dft_parameters = {}
+            if job_info['job_status'] == 'FINISHED':
 
-        # Create base directory if it does not exist
-        if not os.path.exists(base_directory):
-            os.makedirs(base_directory)
+                directory = job_info['directory']
+                structure_index = job_info['structure_index']
 
-        # Special case of single input structure:
-        if isinstance(input_structures, Atoms): input_structures = [input_structures]
-
-        # Write the dft files
-        for i, structure in enumerate(input_structures):
-            target_directory = os.path.join(base_directory, f'{prefix}_{i}')
-            self.create_dft_calculation(target_directory=target_directory)
-            self.Cdft.write_POSCAR(input_structure=structure, target_directory=target_directory)
-            if schedule:
-                #self.Cscheduler.set_scheduler_parameters(run_command=run_command)
-                #self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
-                self.Cdft.write_VASP_sub(target_directory=target_directory, job_filename=job_filename)
-
-    def run_batch_dft(self, base_directory, prefix='dft', save_traj=True, traj_filename='dft_structures.traj', job_filename='sub.sh'):
-        """
-         Intended to be used in conjuction with create_batch_dft.
-         Method that runs all SCF calculations in subdirectories of `base_directory` and stores the converged structures in self.Cstructures.dft_set. 
-         If `save_traj` is True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
-         It is assumed the subdirectories names end with a structure index {_1, _2, ...} so that the ordering of structures created by create_batch_dft is preserved.
- 
-         Parameters:
-             base_directory: directory in which the subdirectories with minimization files are given
-             prefix: prefix of the subdirectory names
-             save_traj: if True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
-             traj_filename: specifies the name of the output trajectory file
-             job_filename: name of the submission script
-
-         """
-
-
-        # cd to base_directory
-        os.chdir(base_directory)
-
-        # Get a list of all the subdirectories sorted by the structure index
-        subdirectories = sorted(glob.glob(f'{prefix}*'), key=lambda x: int(x.split('_')[-1]))
-
-        # Initialize self.Cstructures.dft_set with None
-        self.Cstructures.dft_set = [None] * len(subdirectories)
-
-        # cd to the subdirectories, submit jobs and rememeber the structure_index
-        for subdirectory in subdirectories:
-
-            os.chdir(subdirectory)
-            self.Cscheduler.run_submission_script(job_filename=job_filename)
-            job_id = self.Cscheduler.job_ids[-1]
-
-            cwd = os.getcwd()
-            structure_index = int(cwd.split('_')[-1])
-
-            self.Cscheduler.job_info[f'{job_id}']['structure_index'] = structure_index
-
-            os.chdir(base_directory)
-
-        # Check job status
-        while len(self.Cscheduler.job_ids) > 0:
-
-            for job_id in self.Cscheduler.job_ids:
-
-                result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)])
-
-                # Job not running anymore
-                if len(result.strip()) == 0:
-
-                    print(f'Job {job_id} has completed.')
-                    self.Cscheduler.job_ids.remove(job_id)
-                    self.Cscheduler.job_info[f'{job_id}']['job_status'] = 'FINISHED'
-
-                # Job still exists
-                else: 
-                    self.Cscheduler.check_job_status(job_id, result)
-
-            # Wait a second before checking again
-            time.sleep(10)
-
-            # Check if 'FINISHED' jobs exited correctly
-            # store the structure along with the calculated energy and forces in self.Cstructures.dft_set
-
-            for job_id, job_info in self.Cscheduler.jobs_info.items():
-
-                if job_info['job_status'] == 'FINISHED':
-
-                    directory = job_info['directory']
-                    structure_index = job_info['structure_index']
+                # VASP SCF case
+                if calculation_type == 'VASP_SCF':
                     outcar_file = os.path.join(directory, 'OUTCAR')
 
                     # Check if OUTCAR exists
-
                     if os.path.exists(outcar_file):
                         with open(outcar_file) as f:
-                            structure = read(f)
                             out_lines = f.readlines()
 
                         # Check for convergence
-
                         for line in out_lines:
                             if 'Voluntary' in line:
-                                self.Cstructures.dft_set[structure_index] = structures
-                            # if not there the calculation died somewhere along the way and is thus 'NOT CONVERGED'
+                                self.Cstructures.dft_set[structure_index] = read(outcar_file)
+
                             else:
                                 self.Cscheduler.job_info[f'{job_id}'] = 'NOT CONVERGED'
 
                     else: 
                         self.Cscheduler.job_info[f'{job_id}'] = 'CALCULATION_FAILED'
 
-            # Save the converged DFT structures if specified
-            if save_traj:
-                write(traj_filename, structures)
-
+                else:
+                    raise Exception(f"Calculation type {calculation_type} not implemented.")
 

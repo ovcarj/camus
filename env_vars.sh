@@ -36,7 +36,7 @@ echo 'export LAMMPS_EXE=/path/to/lammps/executable' >> ~/.bashrc
 # Define default path to ML model
 echo 'export ML_MODEL=/path/to/ml/model' >> ~/.bashrc
 
-# Define default path to POTCAR (for spec order: Br I Cs Pb)
+# Define default path to POTCAR 
 echo 'export DFT_POTCAR=/path/to/dft/POTCAR' >> ~/.bashrc
 
 echo '' >> ~/.bashrc

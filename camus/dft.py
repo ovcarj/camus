@@ -5,9 +5,13 @@ This module defines everything regarding the DFT input.
 """
 
 import os
+import numpy as np
 
 from abc import ABC, abstractmethod
+
+from ase import Atom
 from ase.io import read
+from ase.io import write
 
 class DFT(ABC):
 
@@ -83,13 +87,14 @@ class VASP(DFT):
             self._dft_parameters[key] = kwargs.pop(key, value)
     
     @staticmethod
-    def write_POSCAR(input_structure, target_directory=None):
-        """ Method which writes standart VASP input structure file -- POSCAR, using ASE Atoms object (input_structure MUST be provided).
-        'target_directory' defaultly (if not specified otherwise) set to 'CAMUS_DFT_DIR'
+    def write_POSCAR(input_structure, specorder, target_directory=None):
+        """ Writes a standard VASP input structure file (POSCAR), using an ASE Atoms object `input_structure`.
+        The desired `specorder` (e.g. a list ['Br', 'I', 'Cs', 'Pb'] must be given to ensure 
+        that the atomic species are reordered as in a POTCAR file.
+        'target_directory' If not specified, `target_directory` defaults to the environment variable '$CAMUS_DFT_DIR'.
         
         """
  
-
         # Set default target_directory 
         if target_directory is None:
             target_directory = os.environ.get('CAMUS_DFT_DIR')
@@ -100,13 +105,18 @@ class VASP(DFT):
         if not os.path.exists(target_directory):
             os.makedirs(target_directory)
 
+        # Reorder atoms
+        atomic_numbers = [Atom(sym).number for sym in specorder]
+        atom_numbers = input_structure.get_atomic_numbers()
+        order = np.argsort([atomic_numbers.index(n) for n in atom_numbers])
+        sorted_atoms = input_structure[order]
+
         # Write the POSCAR file to the target directory
-        from ase.io import write
-        write(os.path.join(target_directory, 'POSCAR'), input_structure, format='vasp')
+        write(os.path.join(target_directory, 'POSCAR'), sorted_atoms, format='vasp')
 
     @staticmethod
     def write_VASP_sub(target_directory=None, job_filename='sub.sh'):
-        """Temporary mathod which crates a sub.sh submission script specific to VASP calculation.
+        """Temporary method which crates a sub.sh submission script specific to VASP calculation.
         
         """
         # Set default target_directory 
