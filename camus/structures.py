@@ -489,16 +489,11 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
         return sorted_atoms
 
-    """
-
-    Model accuracy:
-    
-    """
     @staticmethod
-    def model_accuracy(dft_structures, lammps_structures, energy_limit=0.1, force_limit=0.2):
-    """
-    [Notes on model_accuracy]
-    """
+    def model_accuracy(dft_structures, lammps_structures, energy_limit=0.01, force_limit=0.01):
+        """
+        [Notes on model_accuracy]
+        """
         # check the datasets are the same lenghts
         if len(dft_structures) != len(lammps_structures):
             raise ValueError("The datasets cannot be compared if they don't contain the same number of structures.")
@@ -508,6 +503,10 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         dft_forces = []
         lammps_energies = []
         lammps_forces = []
+        energies_over_limit_indices = []
+        energies_over_limit = []
+        forces_over_limit_indices = []
+        forces_over_limit = []
 
         # Calculate potential energies and forces:
         for dft_structure in dft_structures:
@@ -526,14 +525,12 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         for i, lammps_structure in enumerate(lammps_structures):
             dft_force = np.array(dft_forces[i])
             lammps_force = np.array(lammps_forces[i])
-            diffrence = np.where(np.any(abs((dft_force-lammps_force)/dft_force)>force_limit))[0]
+            difference = np.where(np.any(abs((dft_force-lammps_force)/dft_force)>force_limit))[0]
             if len(difference) > 0:
                 forces_over_limit_indices.append(i)
                 forces_over_limit.append(lammps_structure[i])
         
-        # create union lists
         structures_over_limit_indices = list(set().union(energies_over_limit_indices, forces_over_limit_indices))
         structures_over_limit = list(set().union(energies_over_limit, forces_over_limit))
 
-        # return list of indices and list of ASE Atoms
         return structures_over_limit_indices, structures_over_limit
