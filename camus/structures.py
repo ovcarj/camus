@@ -492,13 +492,16 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
     @staticmethod
     def model_accuracy(dft_structures, lammps_structures, energy_limit=0.01, force_limit=0.01):
         """
-        [Notes on model_accuracy]
+        Method which takes two lists of ASE Atoms objects `dft_structures` & `lammps_structures` and compares the calculated energies and forces to assess the accuracy of the used ML potential
+        `energy_limit`, `force_limit` serve as a threshold of how much can the values obtained from the calculations using the ML potential differ (percentage-wise)
+        The output is a list of the indices the unsatisfactory structures along with a list of ASE Atoms objects of the corresponding strucutres
         """
-        # check the datasets are the same lenghts
+
+        # Check the datasets are the same lenghts
         if len(dft_structures) != len(lammps_structures):
             raise ValueError("The datasets cannot be compared if they don't contain the same number of structures.")
 
-        # initiate self.lists
+        # Initiate neccessary lists
         dft_energies = []
         dft_forces = []
         lammps_energies = []
