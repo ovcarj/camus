@@ -494,7 +494,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
     Model accuracy:
     
     """
-
+    @staticmethod
     def model_accuracy(dft_structures, lammps_structures, energy_limit=0.1, force_limit=0.2):
     """
     [Notes on model_accuracy]
@@ -509,13 +509,14 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         lammps_energies = []
         lammps_forces = []
 
+        # Calculate potential energies and forces:
         for dft_structure in dft_structures:
-            dft_energies = dft_structure.get_potential_energy()
-            dft_forces = dft_structure.get_forces()
+            dft_energies.append(dft_structure.get_potential_energy())
+            dft_forces.append(dft_structure.get_forces())
 
         for lammps_structure in lammps_structures:
-            lammps_energies = lammps_structure.get_potential_energy()
-            lammps_forces = lammps_structure.get_forces()
+            lammps_energies.append(lammps_structure.get_potential_energy())
+            lammps_forces.append(lammps_structure.get_forces())
 
         for i, lammps_structure in enumerate(lammps_structures):
             if abs((dft_energies[i] - lammps_energies[i])/dft_energies[i]) > energy_limit:
@@ -530,7 +531,9 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
                 forces_over_limit_indices.append(i)
                 forces_over_limit.append(lammps_structure[i])
         
-        # create a union lists
+        # create union lists
+        structures_over_limit_indices = list(set().union(energies_over_limit_indices, forces_over_limit_indices))
+        structures_over_limit = list(set().union(energies_over_limit, forces_over_limit))
 
         # return list of indices and list of ASE Atoms
-
+        return structures_over_limit_indices, structures_over_limit
