@@ -488,3 +488,49 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         sorted_atoms = input_structure[order]
 
         return sorted_atoms
+
+    """
+
+    Model accuracy:
+    
+    """
+
+    def model_accuracy(dft_structures, lammps_structures, energy_limit=0.1, force_limit=0.2):
+    """
+    [Notes on model_accuracy]
+    """
+        # check the datasets are the same lenghts
+        if len(dft_structures) != len(lammps_structures):
+            raise ValueError("The datasets cannot be compared if they don't contain the same number of structures.")
+
+        # initiate self.lists
+        dft_energies = []
+        dft_forces = []
+        lammps_energies = []
+        lammps_forces = []
+
+        for dft_structure in dft_structures:
+            dft_energies = dft_structure.get_potential_energy()
+            dft_forces = dft_structure.get_forces()
+
+        for lammps_structure in lammps_structures:
+            lammps_energies = lammps_structure.get_potential_energy()
+            lammps_forces = lammps_structure.get_forces()
+
+        for i, lammps_structure in enumerate(lammps_structures):
+            if abs((dft_energies[i] - lammps_energies[i])/dft_energies[i]) > energy_limit:
+                energies_over_limit_indices.append(i)
+                energies_over_limit.append(lammps_structure[i])
+
+        for i, lammps_structure in enumerate(lammps_structures):
+            dft_force = np.array(dft_forces[i])
+            lammps_force = np.array(lammps_forces[i])
+            diffrence = np.where(np.any(abs((dft_force-lammps_force)/dft_force)>force_limit))[0]
+            if len(difference) > 0:
+                forces_over_limit_indices.append(i)
+                forces_over_limit.append(lammps_structure[i])
+        
+        # create a union lists
+
+        # return list of indices and list of ASE Atoms
+
