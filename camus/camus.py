@@ -192,7 +192,8 @@ class Camus:
                 for de_index, delta_e_final in enumerate(delta_e_finals):
                     
                     # Set Sisyphus parameters
-                    self.Csisyphus.set_sisyphus_parameters(dE_initial_threshold=str(transition_energy), dE_final_threshold=str(delta_e_final))
+                    self.Csisyphus.sisyphus_parameters['dE_initial_threshold'] = str(transition_energy)
+                    self.Csisyphus.sisyphus_parameters['dE_final_threshold'] = str(delta_e_final)
 
                     for calculation in range(calcs_per_parameters):
 

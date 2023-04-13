@@ -281,13 +281,14 @@ class Sisyphus:
            initial_lammps_out: Filename of the output file for initial LAMMPS minimization/PE calculation
 
         """
-        default_parameters= {
+        default_parameters = {
             'dE_initial_threshold': '0.5',
             'dE_final_threshold': '0.1',
             'delr_threshold': '1.0',
             'maximum_steps': '100',
             'run_lammps': os.environ.get('RUN_LAMMPS'),
             'lammps_exe': os.environ.get('LAMMPS_EXE'),
+            'lammps_flags': os.environ.get('LAMMPS_FLAGS'),
             'sisyphus_functions_path': os.path.join(os.environ.get('CAMUS_BASE'), 'sisyphus_files/sisyphus_functions'),
             'initial_lammps_in': 'initial_lammps.in',
             'initial_lammps_out': 'initial_lammps.out'
@@ -331,7 +332,7 @@ class Sisyphus:
 
 source {self.sisyphus_parameters['sisyphus_functions_path']}
 
-{self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} -in {self.sisyphus_parameters['initial_lammps_in']} > {self.sisyphus_parameters['initial_lammps_out']} 
+{self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} {self.sisyphus_parameters['lammps_flags']} -in {self.sisyphus_parameters['initial_lammps_in']} > {self.sisyphus_parameters['initial_lammps_out']} 
 
 E_initial=$(grep "PotEng" initial_lammps.out -A1 | tail -1 | awk {{'print $2'}})
 
@@ -368,7 +369,7 @@ do
     if (( $(echo "$outer_counter < $maximum_steps" | bc -l) ))
     then
         echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $SISYPHUS_LOG_FILE
-        {self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} -in lammps.in
+        {self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} {self.sisyphus_parameters['lammps_flags']} -in lammps.in
 
         advance_search
     else
@@ -394,7 +395,7 @@ do
     if (( $(echo "$outer_counter < $maximum_steps" | bc -l) ))
     then
         echo "MSG_$outer_counter: Running ARTn search #$outer_counter ..." >> $SISYPHUS_LOG_FILE
-        {self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} -in lammps.in
+        {self.sisyphus_parameters['run_lammps']} {self.sisyphus_parameters['lammps_exe']} {self.sisyphus_parameters['lammps_flags']} -in lammps.in
 
         advance_search
     else

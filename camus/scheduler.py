@@ -78,6 +78,7 @@ class Slurm(Scheduler):
         # Get common strings from environment variables
         run_lammps = os.environ.get('RUN_LAMMPS')
         lammps_exe = os.environ.get('LAMMPS_EXE')
+        lammps_flags = os.environ.get('LAMMPS_FLAGS')
 
         default_parameters= {
             'partition': 'normal',
@@ -88,7 +89,8 @@ class Slurm(Scheduler):
             'nodes': '1',
             'ntasks': '1',
             'modules': ['gnu9', 'openmpi4/4.1.1'],
-            'run_command': f'{run_lammps} {lammps_exe} -in {input_file} > {output_file}' 
+            'additional_commands': ['export OMP_NUM_THREADS=$SLURM_NTASKS', 'ulimit -s unlimited'],
+            'run_command': f'{run_lammps} {lammps_exe} {lammps_flags} -in {input_file} > {output_file}' 
             }
 
         for key in kwargs:
@@ -133,13 +135,12 @@ module purge
             for module in self.scheduler_parameters['modules']:
                 f.write(f"module load {module}\n")
 
-            f.write(f"""
-export MKL_CBWR="AVX2"
-export I_MPI_FABRICS=shm:ofi
-ulimit -s unlimited
+            f.write("\n")
 
-{self.scheduler_parameters['run_command']}
-""")
+            for command in self.scheduler_parameters['additional_commands']:
+                f.write(f"{command}\n")
+
+            f.write(f"\n{self.scheduler_parameters['run_command']}")
 
     def run_submission_script(self, job_filename='sub.sh'):
         # Submit job
