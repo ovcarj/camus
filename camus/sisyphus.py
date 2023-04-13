@@ -288,7 +288,7 @@ class Sisyphus:
             'maximum_steps': '100',
             'run_lammps': os.environ.get('RUN_LAMMPS'),
             'lammps_exe': os.environ.get('LAMMPS_EXE'),
-            'lammps_flags': '',
+            'lammps_flags': os.environ.get('LAMMPS_FLAGS'),
             'sisyphus_functions_path': os.path.join(os.environ.get('CAMUS_BASE'), 'sisyphus_files/sisyphus_functions'),
             'initial_lammps_in': 'initial_lammps.in',
             'initial_lammps_out': 'initial_lammps.out'
