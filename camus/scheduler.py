@@ -81,7 +81,7 @@ class Slurm(Scheduler):
 
         default_parameters= {
             'partition': 'normal',
-            'job-name': 'sisyphus',
+            'job_name': 'sisyphus',
             'output': '%x-%j.out',
             'error': '%x-%j.err',
             'mem': '7gb', 
@@ -120,7 +120,7 @@ class Slurm(Scheduler):
         with open(os.path.join(target_directory, filename), 'w') as f:
             f.write(f"""#!/bin/bash
 #SBATCH --partition={self.scheduler_parameters['partition']}
-#SBATCH --job-name={self.scheduler_parameters['job-name']}
+#SBATCH --job-name={self.scheduler_parameters['job_name']}
 #SBATCH --output={self.scheduler_parameters['output']}
 #SBATCH --error={self.scheduler_parameters['error']}
 #SBATCH --mem={self.scheduler_parameters['mem']}
@@ -137,8 +137,6 @@ module purge
 export MKL_CBWR="AVX2"
 export I_MPI_FABRICS=shm:ofi
 ulimit -s unlimited
-
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib64
 
 {self.scheduler_parameters['run_command']}
 """)

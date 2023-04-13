@@ -16,7 +16,7 @@ import pickle
 import shutil 
 
 from ase import Atoms
-from ase.io import write
+from ase.io import write, read
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
@@ -460,7 +460,7 @@ class Camus:
             f.write(incar_content)
         
         # Write POSCAR file to target directory
-        self.Cdft.write_POSCAR(input_structure=structure, target_directory=target_directory)
+        self.Cdft.write_POSCAR(input_structure=input_structure, target_directory=target_directory, specorder=specorder)
 
         # The path to POTCAR
         if path_to_potcar is None:
@@ -473,7 +473,7 @@ class Camus:
             raise Exception("POTCAR file required by VASP was not found.")
 
     def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
-            input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic'):
+            input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic', path_to_potcar=None):
 
         """
         Creates a number of `input_structures` directories in `base_directory` with the names
@@ -511,7 +511,7 @@ class Camus:
                 self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
 
             elif calculation_type == 'VASP':
-                self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder)
+                self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
 
             else:
                 raise Exception(f"Calculation type {calculation_type} not implemented.")
@@ -677,10 +677,10 @@ class Camus:
                                 self.Cstructures.dft_set[structure_index] = read(outcar_file)
 
                             else:
-                                self.Cscheduler.job_info[f'{job_id}'] = 'NOT CONVERGED'
+                                self.Cscheduler.jobs_info[f'{job_id}'] = 'NOT CONVERGED'
 
                     else: 
-                        self.Cscheduler.job_info[f'{job_id}'] = 'CALCULATION_FAILED'
+                        self.Cscheduler.jobs_info[f'{job_id}'] = 'CALCULATION_FAILED'
 
                 else:
                     raise Exception(f"Calculation type {calculation_type} not implemented.")

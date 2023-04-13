@@ -327,7 +327,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
         return np.array(energies), np.array(forces)
 
-    def write_lammps_data(self, target_directory=None, input_structures=None, prefixes='auto', specorder=None, write_masses=False,
+    def write_lammps_data(self, target_directory=None, input_structures=None, prefixes='auto', specorder=None, write_masses=True,
             atom_style='atomic'):
         """ Creates LAMMPS data files from a list of ASE Atoms objects in a target directory.
 
