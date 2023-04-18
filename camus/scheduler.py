@@ -155,7 +155,7 @@ module purge
         # Initialize self.jobs_info dictionary
 
         self.jobs_info[f'{job_id}'] = {'directory': cwd, 'job_status': 'I', 
-                'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': 0}
+                'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': -1}
 
     def check_job_status(self, job_id, max_queuetime, max_runtime):
         """ Checks whether a job with `job_id` is queueing, running or failed.
@@ -197,10 +197,11 @@ module purge
 
             # Job running
             elif self.jobs_info[f'{job_id}']['job_status'] == 'R':
-
+                
                 # Check if this is the first instance of seeing the job running
-                if self.jobs_info[f'{job_id}']['run_time'] == 0:
+                if self.jobs_info[f'{job_id}']['run_time'] == -1:
                     self.jobs_info[f'{job_id}']['start_time'] = current_time
+                    self.jobs_info[f'{job_id}']['run_time'] = 0
 
                 self.jobs_info[f'{job_id}']['run_time'] = current_time - self.jobs_info[f'{job_id}']['start_time']
 
