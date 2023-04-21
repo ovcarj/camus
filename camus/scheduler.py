@@ -169,11 +169,22 @@ module purge
         except:
             squeue_result = b''
 
+        try:
+            sjob_result = subprocess.check_output(['sacct', '-j', str(job_id), '--format=state'], stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError as e:
+            print(f"Command failed with return code {e.returncode}")
+
         # Job completed (not running anymore)
         if len(squeue_result.strip()) == 0:
             self.job_ids.remove(job_id)
             self.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
 
+            # If job is 'FINISHED' check if it wasn't explicitly cancelled by a user or administrator
+            if self.jobs_info[f'{job_id}']['job_status'] == 'FINISHED':
+                job_state = sjob_result.strip().split()[3].decode('utf-8')
+                if job_state == 'CANCELLED':
+                    self.jobs_info[f'{job_id}']['job_status'] = 'JOB_CANCELLED'
+ 
         # Job still running
         else:
 
@@ -191,10 +202,10 @@ module purge
                     subprocess.run(["scancel", job_id])
 
             # Job failed for some reason
-            elif self.jobs_info[f'{job_id}']['job_status'] in ['BF', 'CA', 'DL', 'F', 'NF', 'PR', 'ST', 'TO']:
+            elif self.jobs_info[f'{job_id}']['job_status'] in ['BF', 'DL', 'CA', 'F', 'NF', 'PR', 'ST', 'TO']:
                 self.job_ids.remove(job_id)
                 subprocess.run(["scancel", job_id])
-
+            
             # Job running
             elif self.jobs_info[f'{job_id}']['job_status'] == 'R':
                 

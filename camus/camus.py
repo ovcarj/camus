@@ -328,7 +328,7 @@ class Camus:
                         self.sisyphus_dictionary[f'{calculation_label}']['activation_e_forward'] = float(last_log_line_split[3])
                         self.sisyphus_dictionary[f'{calculation_label}']['delta_e_final_top'] = float(last_log_line_split[6])
                         self.sisyphus_dictionary[f'{calculation_label}']['delta_e_final_initial'] = float(last_log_line_split[9])
-
+                    
                     else:
                         self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
                         self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'CALCULATION_FAILED'
@@ -377,7 +377,7 @@ class Camus:
                     else:
                         self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'NO_STRUCTURES_WRITTEN'
                         self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'NO_STRUCTURES_WRITTEN'
-
+                
                 else:
                     self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
                     self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'CALCULATION_FAILED'
@@ -643,7 +643,7 @@ class Camus:
 
                     if os.path.exists(minimization_file):
                         self.Cstructures.minimized_set[structure_index] = self.Cstructures.parse_lammps_dump(specorder, log_lammps, minimization_file)
-
+                    
                     else:
                         self.Cscheduler.jobs_info[f'{job_id}'] = 'CALCULATION_FAILED'
 
