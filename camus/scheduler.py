@@ -99,8 +99,11 @@ class Slurm(Scheduler):
 
         # Set self._scheduler_parameters
         for key, value in default_parameters.items():
-            self._scheduler_parameters[key] = kwargs.pop(key, value)
-
+            try:
+                if ((self._scheduler_parameters[key] is None) or (key in kwargs.keys())):
+                    self._scheduler_parameters[key] = kwargs.pop(key, value)
+            except KeyError:
+                self._scheduler_parameters[key] = kwargs.pop(key, value)
 
     def write_submission_script(self, target_directory, filename='sub.sh'):
         """ Method that writes a Slurm submission script to `target directory/filename`.
@@ -178,13 +181,13 @@ module purge
         if len(squeue_result.strip()) == 0:
             self.job_ids.remove(job_id)
             self.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
-
+            
             # If job is 'FINISHED' check if it wasn't explicitly cancelled by a user or administrator
             if self.jobs_info[f'{job_id}']['job_status'] == 'FINISHED':
                 job_state = sjob_result.strip().split()[3].decode('utf-8')
                 if job_state == 'CANCELLED':
                     self.jobs_info[f'{job_id}']['job_status'] = 'JOB_CANCELLED'
- 
+                     
         # Job still running
         else:
 
