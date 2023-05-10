@@ -680,7 +680,7 @@ class Camus:
                                 self.Cscheduler.jobs_info[f'{job_id}'] = 'NOT CONVERGED'
 
                     else: 
-                        self.Cscheduler.jobs_info[f'{job_id}'] = 'CALCULATION_FAILED'
+                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
 
                 else:
                     raise Exception(f"Calculation type {calculation_type} not implemented.")
