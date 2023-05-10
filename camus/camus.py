@@ -645,7 +645,7 @@ class Camus:
                         self.Cstructures.minimized_set[structure_index] = self.Cstructures.parse_lammps_dump(specorder, log_lammps, minimization_file)
 
                     else:
-                        self.Cscheduler.jobs_info[f'{job_id}'] = 'CALCULATION_FAILED'
+                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
 
                 else:
                     raise Exception(f"Calculation type {calculation_type} not implemented.")
