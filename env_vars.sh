@@ -33,6 +33,9 @@ echo 'export RUN_LAMMPS=""' >> ~/.bashrc
 # Define path to LAMMPS executable
 echo 'export LAMMPS_EXE=/path/to/lammps/executable' >> ~/.bashrc
 
+# Define additional LAMMPS flags to be used when running LAMMPS
+echo 'export LAMMPS_FLAGS=""' >> ~/.bashrc
+
 # Define default path to ML model
 echo 'export ML_MODEL=/path/to/ml/model' >> ~/.bashrc
 
