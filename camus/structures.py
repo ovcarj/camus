@@ -18,6 +18,8 @@ from ase.io.lammpsrun import read_lammps_dump
 from dscribe.descriptors import ACSF
 from dscribe.kernels import AverageKernel
 
+from collections import Counter
+
 class Structures:
 
     def __init__(self, structures=None, training_set=None, validation_set=None, test_set=None, 
@@ -183,9 +185,9 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         """
         default_parameters= {
             'rcut': 6.0,
-            'g2_params': [(1, 2), (1, 4), (1, 8),(1,16)],
+            'g2_params': [(1, 2), (1, 4)], #[(1, 2), (1, 4), (1, 8),(1,16)],
             'g3_params': [1,2],
-            'g4_params': [(1, 4, 4), (1, 4, -1), (1, 8, 4), (1, 8, -1)],
+            'g4_params': [(1, 2, 1), (1, 4, 1)], #[(1, 4, 4), (1, 4, -1), (1, 8, 4), (1, 8, -1)],
             'species': ['Cs', 'Pb', 'Br', 'I'],
             'periodic': True
             }
@@ -248,6 +250,78 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             if is_unique:
                 unique_structures.append(candidate_set_structures.structures[i])
 
+        return unique_structures
+
+    @staticmethod
+    def group_by_composition(input_structures):
+
+        # Get the unique chemical symbols present in the structures
+        chemical_symbols = set()
+        for structure in input_structures:
+            chemical_symbols.update(structure.get_chemical_symbols())
+
+        # Create a dictionary to store the counts of each chemical symbol in each structure
+        structure_counts = {symbol: [] for symbol in chemical_symbols}
+
+        # Populate the structure_counts dictionary
+        for structure in input_structures:
+            counts = Counter(structure.get_chemical_symbols())
+            for symbol in chemical_symbols:
+                structure_counts[symbol].append(counts.get(symbol, 0))
+
+        # Identify the unique combinations of counts
+        unique_counts = set(map(tuple, zip(*structure_counts.values())))
+
+        # Filter the structures based on the unique count combinations
+        structures_grouped_by_composition = {count: [] for count in unique_counts}
+        for i, structure in enumerate(input_structures):
+            counts = tuple(structure_counts[symbol][i] for symbol in chemical_symbols)
+            structures_grouped_by_composition[counts].append(structure)
+
+        return structures_grouped_by_composition
+
+    @staticmethod
+    def find_unique_structures_by_composition(reference_set_structures, candidate_set_structures, threshold=0.90, metric='laplacian', gamma=1):
+        '''
+        find groups for reference set
+        find groups for candidate set
+        create a `common_compositions` dictionary {composition: reference_structures[], candidate[structures]}
+        if candidate set group not in reference_groups keys -> candidate `automatically unique`
+        find_unique_structures within the `common_compositions` dictionary
+        append all the `unique` structures into a single set of `unique_structures`
+        '''
+
+        # Create grouped datasets
+        reference_groups = Structures.group_by_composition(reference_set_structures)
+        candidate_groups = Structures.group_by_composition(candidate_set_structures)
+        
+        # Create sets of element compositions 
+        reference_compositions = set(reference_groups.keys())
+        candidate_compositions = set(candidate_groups.keys())
+        common_compositions = reference_compositions & candidate_compositions
+
+        # Initiate `common_compostion_groups` dictionary
+        common_composition_groups = {}
+        # Cycle through the compositions the two have in common and assign a reference and candidate set to each composition
+        for key in common_compositions:
+            common_composition_groups[key] = {
+                'reference_structures': reference_groups[key],
+                'candidate_structures': candidate_groups[key],
+            }
+       
+        unique_structures = []
+        
+        # If candidate not in common_groups then automatically considered `unique`
+        for key in candidate_compositions:
+            if key not in common_compositions:
+                unique_structures.extend(candidate_groups[key])
+
+        # Run `find_unique_structures` function within each composition group 
+        for key in common_compositions:
+            unique = Structures.find_unique_structures(reference_set_structures = Structures(common_composition_groups[key]['reference_structures']), candidate_set_structures = Structures(common_composition_groups[key]['candidate_structures']), threshold=threshold, metric=metric, gamma=gamma)
+            if unique != []:
+                unique_structures.extend(unique)
+        
         return unique_structures
 
     def create_datasets(self, input_structures=None, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
