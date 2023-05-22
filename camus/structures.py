@@ -253,12 +253,15 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         return unique_structures
 
     @staticmethod
-    def group_by_composition(input_structures):
+    def group_by_composition(input_structures, specorder):
 
-        # Get the unique chemical symbols present in the structures
-        chemical_symbols = set()
-        for structure in input_structures:
-            chemical_symbols.update(structure.get_chemical_symbols())
+        if specorder is None:
+            # Get the unique chemical symbols present in the structures
+            chemical_symbols = set()
+            for structure in input_structures:
+                chemical_symbols.update(structure.get_chemical_symbols())
+        else:
+            chemical_symbols = specorder
 
         # Create a dictionary to store the counts of each chemical symbol in each structure
         structure_counts = {symbol: [] for symbol in chemical_symbols}
@@ -281,7 +284,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         return structures_grouped_by_composition
 
     @staticmethod
-    def find_unique_structures_by_composition(reference_set_structures, candidate_set_structures, threshold=0.90, metric='laplacian', gamma=1):
+    def find_unique_structures_by_composition(reference_set_structures, candidate_set_structures, threshold=0.90, metric='laplacian', gamma=1, specorder=None):
         '''
         find groups for reference set
         find groups for candidate set
@@ -292,8 +295,8 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         '''
 
         # Create grouped datasets
-        reference_groups = Structures.group_by_composition(reference_set_structures)
-        candidate_groups = Structures.group_by_composition(candidate_set_structures)
+        reference_groups = Structures.group_by_composition(reference_set_structures, specorder=specorder)
+        candidate_groups = Structures.group_by_composition(candidate_set_structures, specorder=specorder)
         
         # Create sets of element compositions 
         reference_compositions = set(reference_groups.keys())
@@ -597,7 +600,6 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         for i, lammps_structure in enumerate(lammps_structures):
             if abs((dft_energies[i] - lammps_energies[i])/dft_energies[i]) > energy_limit:
                 energies_over_limit_indices.append(i)
-                energies_over_limit.append(lammps_structure[i])
 
         for i, lammps_structure in enumerate(lammps_structures):
             dft_force = np.array(dft_forces[i])
@@ -605,9 +607,10 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             difference = np.where(np.any(abs((dft_force-lammps_force)/dft_force)>force_limit))[0]
             if len(difference) > 0:
                 forces_over_limit_indices.append(i)
-                forces_over_limit.append(lammps_structure[i])
-        
+
         structures_over_limit_indices = list(set().union(energies_over_limit_indices, forces_over_limit_indices))
-        structures_over_limit = list(set().union(energies_over_limit, forces_over_limit))
+        structures_over_limit = []
+        for index in structures_over_limit_indices:
+            structures_over_limit.append(lammps_structures[index])
 
         return structures_over_limit_indices, structures_over_limit
