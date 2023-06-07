@@ -111,5 +111,5 @@ class VASP(DFT):
         sorted_atoms = Structures().sort_atoms(input_structure=input_structure, specorder=specorder) 
 
         # Write the POSCAR file to the target directory
-        write(os.path.join(target_directory, 'POSCAR'), sorted_atoms, format='vasp')
+        write(os.path.join(target_directory, 'POSCAR'), input_structure, format='vasp')
 

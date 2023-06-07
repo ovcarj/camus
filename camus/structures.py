@@ -537,21 +537,31 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         with open(filename) as f:
             lines = f.readlines()
 
+        sorted_lines = sorted(lines[2:], key=lambda line: int(line.split()[-1]))
+
         cell = np.array(lines[1].strip().split(' ')[1:10], dtype='float').reshape(3, 3, order='F')
         energy = float(lines[1].strip().split(':')[-1])
-        positions = np.loadtxt(filename, skiprows=2, usecols=(1, 2, 3))
-        forces = np.loadtxt(filename, skiprows=2, usecols=(4, 5, 6))
- 
+
+        positions_list = []
+        forces_list = []
+        for sorted_line in sorted_lines:
+            positions_list.append(np.array([float(i) for i in sorted_line.strip().split()[1:4]]))
+            forces_list.append(np.array([float(i) for i in sorted_line.strip().split()[4:7]]))
+
+        positions = np.array(positions_list)
+        forces = np.array(forces_list)
+
         atom_types = []
- 
-        for line in lines[2:]:
+
+        for line in sorted_lines:
             atom_id = int(line.strip()[0])
-            atom_types.insert(-1, specorder[atom_id - 1])
- 
+            atom_types.append(specorder[atom_id - 1])
+
         atoms=Atoms(symbols=atom_types, positions=positions, pbc=True, cell=cell)
         atoms.calc = SinglePointCalculator(atoms, energy=energy, forces=forces)
 
         return atoms
+
 
     @staticmethod
     def sort_atoms(input_structure, specorder):
