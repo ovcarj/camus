@@ -166,7 +166,7 @@ module purge
         """
 
         current_time = time.time()
-
+        
         try:
             squeue_result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)], stderr=subprocess.DEVNULL)
         except:
@@ -175,6 +175,7 @@ module purge
 
         # Job completed (not running anymore)
         if len(squeue_result.strip()) == 0:
+
             self.job_ids.remove(job_id)
             self.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
 
@@ -189,7 +190,7 @@ module purge
                 job_state = sjob_result.strip().split()[3].decode('utf-8')
                 if job_state == 'CANCELLED':
                     self.jobs_info[f'{job_id}']['job_status'] = 'JOB_CANCELLED'
-                     
+
         # Job still running
         else:
 
