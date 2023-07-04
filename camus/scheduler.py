@@ -99,8 +99,11 @@ class Slurm(Scheduler):
 
         # Set self._scheduler_parameters
         for key, value in default_parameters.items():
-            self._scheduler_parameters[key] = kwargs.pop(key, value)
-
+            try:
+                if ((self._scheduler_parameters[key] is None) or (key in kwargs.keys())):
+                    self._scheduler_parameters[key] = kwargs.pop(key, value)
+            except KeyError:
+                self._scheduler_parameters[key] = kwargs.pop(key, value)
 
     def write_submission_script(self, target_directory, filename='sub.sh'):
         """ Method that writes a Slurm submission script to `target directory/filename`.
@@ -155,7 +158,7 @@ module purge
         # Initialize self.jobs_info dictionary
 
         self.jobs_info[f'{job_id}'] = {'directory': cwd, 'job_status': 'I', 
-                'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': 0}
+                'submission_time': submission_time, 'start_time': 0, 'queue_time': 0, 'run_time': -1}
 
     def check_job_status(self, job_id, max_queuetime, max_runtime):
         """ Checks whether a job with `job_id` is queueing, running or failed.
@@ -163,16 +166,30 @@ module purge
         """
 
         current_time = time.time()
-
+        
         try:
             squeue_result = subprocess.check_output(['squeue', '-h', '-j', str(job_id)], stderr=subprocess.DEVNULL)
         except:
             squeue_result = b''
 
+
         # Job completed (not running anymore)
         if len(squeue_result.strip()) == 0:
+
             self.job_ids.remove(job_id)
             self.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
+
+            # If job is 'FINISHED' check if it wasn't explicitly cancelled by a user or administrator
+            if self.jobs_info[f'{job_id}']['job_status'] == 'FINISHED':
+
+                try:
+                    sjob_result = subprocess.check_output(['sacct', '-j', str(job_id), '--format=state'], stderr=subprocess.DEVNULL)
+                except subprocess.CalledProcessError as e:
+                    print(f"Command failed with return code {e.returncode}")
+
+                job_state = sjob_result.strip().split()[3].decode('utf-8')
+                if job_state == 'CANCELLED':
+                    self.jobs_info[f'{job_id}']['job_status'] = 'JOB_CANCELLED'
 
         # Job still running
         else:
@@ -191,16 +208,17 @@ module purge
                     subprocess.run(["scancel", job_id])
 
             # Job failed for some reason
-            elif self.jobs_info[f'{job_id}']['job_status'] in ['BF', 'CA', 'DL', 'F', 'NF', 'PR', 'ST', 'TO']:
+            elif self.jobs_info[f'{job_id}']['job_status'] in ['BF', 'DL', 'CA', 'F', 'NF', 'PR', 'ST', 'TO']:
                 self.job_ids.remove(job_id)
                 subprocess.run(["scancel", job_id])
-
+            
             # Job running
             elif self.jobs_info[f'{job_id}']['job_status'] == 'R':
-
+                
                 # Check if this is the first instance of seeing the job running
-                if self.jobs_info[f'{job_id}']['run_time'] == 0:
+                if self.jobs_info[f'{job_id}']['run_time'] == -1:
                     self.jobs_info[f'{job_id}']['start_time'] = current_time
+                    self.jobs_info[f'{job_id}']['run_time'] = 0
 
                 self.jobs_info[f'{job_id}']['run_time'] = current_time - self.jobs_info[f'{job_id}']['start_time']
 

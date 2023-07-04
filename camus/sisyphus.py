@@ -190,7 +190,8 @@ class Sisyphus:
             'pair_style': 'allegro',
             'pair_coeff': f'* * {path_to_model} {specorder}',
             'thermo_style': 'custom step pe fnorm lx ly lz press pxx pyy pzz',
-            'dump': 'initialDump all custom 1 initial_sisyphus_structure.xyz type x y z fx fy fz',
+            'dump': 'initialDump all custom 1 initial_sisyphus_structure.xyz type x y z fx fy fz id',
+            'dump_modify': 'initialDump sort id',
             'run': '0'
              }
 
@@ -206,7 +207,8 @@ class Sisyphus:
             'pair_coeff': f'* * {path_to_model} {specorder}',
             'min_style': 'fire',
             'minimize': '1.0e-4 1.0e-6 100 1000',
-            'dump': 'minimizeDump all custom 1 minimized.xyz type x y z fx fy fz',
+            'dump': 'minimizeDump all custom 1 minimized.xyz type x y z fx fy fz id',
+            'dump_modify': 'minimizeDump sort id',
             'run': 0}
 
         # If input_parameters aren't provided use default
