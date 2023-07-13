@@ -504,20 +504,35 @@ class Camus:
         if isinstance(input_structures, Atoms): input_structures = [input_structures]
 
         # Write the calculation files 
-        for i, structure in enumerate(input_structures):
-            target_directory = os.path.join(base_directory, f'{prefix}_{i}')
+        if isinstance(prefix, list):
+            for (i, structure), p in zip(enumerate(input_structures), prefix):
+                target_directory = os.path.join(base_directory, f'{p}_{i}')
 
-            if calculation_type == 'LAMMPS':
-                self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+                if calculation_type == 'LAMMPS':
+                    self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
 
-            elif calculation_type == 'VASP':
-                self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
+                elif calculation_type == 'VASP':
+                    self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
 
-            else:
-                raise Exception(f"Calculation type {calculation_type} not implemented.")
+                if schedule:
+                    self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
-            if schedule:
-                self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
+
+        else:
+            for i, structure in enumerate(input_structures):
+                target_directory = os.path.join(base_directory, f'{prefix}_{i}')
+
+                if calculation_type == 'LAMMPS':
+                    self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+
+                elif calculation_type == 'VASP':
+                    self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
+
+                else:
+                    raise Exception(f"Calculation type {calculation_type} not implemented.")
+
+                if schedule:
+                    self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
     def run_batch_calculation(self, base_directory=None, prefix='minimization', job_filename='sub.sh'):
         """
@@ -544,7 +559,7 @@ class Camus:
 
         # Get a list of all the subdirectories sorted by the structure index
         subdirectories = sorted(glob.glob(f'{prefix}*/'), key=lambda x: int(os.path.basename(os.path.dirname(x)).split('_')[-1])) 
-
+        
         # cd to the subdirectories, submit jobs and remember the structure_index 
         for subdirectory in subdirectories:
 
