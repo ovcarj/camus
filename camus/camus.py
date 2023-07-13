@@ -210,9 +210,8 @@ class Camus:
     def run_batch_sisyphus(self, base_directory, specorder, prefix='sis', job_filename='sub.sh'):
         """
         Intended to be used in conjuction with create_batch_sisyphus.
-        Method that runs all Sisyphus runs in subdirectories of `base_directory` and stores the found
-        transitions in self.Cstructures.transitions . 
-        If `save_transitions` is True, a ASE trajectory files are saved to `base_directory/transitions`.
+        Method that runs all Sisyphus runs in subdirectories of `base_directory` and
+        saves the initial calculation_info.pkl file used by the parse_batch_sisyphus method.
         It is assumed the subdirectories names are as given in create_batch_sisyphus.
  
         Parameters:
@@ -252,7 +251,23 @@ class Camus:
 
         os.chdir(start_cwd)
 
-    def parse_batch_sisyphus(self, base_directory, jobs_info, specorder, prefix='sis'):
+    def parse_batch_sisyphus(self, base_directory, jobs_info, specorder, prefix='sis', write_all_transitions=True, write_ms_explicitly=False, write_pass_fail=False):
+        """
+        Method that parses the Sisyphus runs in subdirectories of `base_directory` using the `jobs_info` pickle file and 
+        saves the found transitions, energies and other information from finished jobs to `sisyphus_dictionary.pkl`.
+        If `write_all_transitions == True`, all transitions will be written in transitions/all directory.
+        If `write_ms_explicitly == True`, minima and saddlepoints will be written explicitly.
+        If `separate_pass_fail == True`, passed and failed transitions will be written separately depending on the finished Sisyphus calculation status.
+ 
+        Parameters:
+            base_directory: directory in which the subdirectories with minimization files are given
+            jobs_info: `jobs_info` dictionary
+            specorder: names of atom types in the LAMMPS minimization
+            prefix: prefix of the subdirectory names
+            write_ms_explicitly: write minima and saddlepoint ASE trajectory files in `minima` and `saddlepoints` directories  
+            separate_pass_fail: if True, separate the transition ASE trajectories to `transitions/passed` and `transitions/failed` directories
+
+        """
 
         # Get cwd so we can return to it at the end of the method
         start_cwd = os.getcwd()
@@ -260,17 +275,25 @@ class Camus:
         # Make directories to store transitions
         os.chdir(base_directory)
 
-        os.makedirs('minima', exist_ok=True)
-        os.makedirs('saddlepoints', exist_ok=True)
-        os.makedirs('transitions', exist_ok=True)
-        os.makedirs('transitions/passed', exist_ok=True)
-        os.makedirs('transitions/failed', exist_ok=True)
+        if write_ms_explicitly:
+            os.makedirs('minima', exist_ok=True)
+            os.makedirs('saddlepoints', exist_ok=True)
+            minima_directory = os.path.abspath('minima')
+            saddlepoints_directory = os.path.abspath('saddlepoints')
 
-        minima_directory = os.path.abspath('minima')
-        saddlepoints_directory = os.path.abspath('saddlepoints')
-        transitions_directory = os.path.abspath('transitions')
-        transitions_passed_directory = os.path.abspath('transitions/passed')
-        transitions_failed_directory = os.path.abspath('transitions/failed')
+        if (write_all_transitions or write_pass_fail):
+            os.makedirs('transitions', exist_ok=True)
+            transitions_directory = os.path.abspath('transitions')
+        
+        if write_all_transitions:
+            os.makedirs('transitions/all', exist_ok=True)
+            transitions_all_directory = os.path.abspath('transitions/all')
+
+        if write_pass_fail:
+            os.makedirs('transitions/passed', exist_ok=True)
+            os.makedirs('transitions/failed', exist_ok=True)
+            transitions_passed_directory = os.path.abspath('transitions/passed')
+            transitions_failed_directory = os.path.abspath('transitions/failed')
 
         # Check if jobs with job_status == 'FINISHED' exited correctly, read the transitions
         # energies & forces, store the structures in self.Cstructures.minimization_set
@@ -365,14 +388,22 @@ class Camus:
                         initial_sisyphus_structure = self.Cstructures.parse_lammps_dump(specorder=specorder, log_lammps='initial_lammps.out', dump_name='initial_sisyphus_structure.xyz')
                         self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].insert(0, initial_sisyphus_structure)
 
-                        # Write transitions
-                        if self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED':
-                            write(os.path.join(transitions_passed_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
-                        elif 'FAILED_' in self.sisyphus_dictionary[f'{calculation_label}']['status']:
-                            write(os.path.join(transitions_failed_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
+                        # Write all transition if requested
+                        if write_all_transitions:
+                            if ((self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED') or ('FAILED_' in self.sisyphus_dictionary[f'{calculation_label}']['status'])):
+                                write(os.path.join(transitions_all_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
 
-                        write(os.path.join(minima_directory, f'{calculation_label}_m.traj'), self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'])
-                        write(os.path.join(saddlepoints_directory, f'{calculation_label}_s.traj'), self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'])
+                        # Write passed/failed transition if requested
+                        if write_pass_fail:
+                            if self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED':
+                                write(os.path.join(transitions_passed_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
+                            elif 'FAILED_' in self.sisyphus_dictionary[f'{calculation_label}']['status']:
+                                write(os.path.join(transitions_failed_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
+
+                        # Write minima/saddlepoints files if requested
+                        if write_ms_explicitly:
+                            write(os.path.join(minima_directory, f'{calculation_label}_m.traj'), self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'])
+                            write(os.path.join(saddlepoints_directory, f'{calculation_label}_s.traj'), self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'])
                     
                     else:
                         self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'NO_STRUCTURES_WRITTEN'
