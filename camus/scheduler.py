@@ -186,9 +186,8 @@ module purge
                     sjob_result = subprocess.check_output(['sacct', '-j', str(job_id), '--format=state'], stderr=subprocess.DEVNULL)
                 except subprocess.CalledProcessError as e:
                     print(f"Command failed with return code {e.returncode}")
-
-                job_state = sjob_result.strip().split()[3].decode('utf-8')
-                if job_state == 'CANCELLED':
+                  
+                if ('CANCELLED' in sjob_result.decode('utf-8')):
                     self.jobs_info[f'{job_id}']['job_status'] = 'JOB_CANCELLED'
 
         # Job still running

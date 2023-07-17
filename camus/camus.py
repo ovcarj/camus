@@ -336,15 +336,12 @@ class Camus:
                         last_log_line = sisyphus_log_lines[-1]
 
                     if('exceeded while climbing up the hill.' in last_log_line):
-                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'FAILED_CLIMB'
                         self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'FAILED_CLIMB'
 
                     elif('exceeded while going down the hill.' in last_log_line):
-                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'FAILED_DESCEND'
                         self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'FAILED_DESCEND'
 
                     elif('MSG_END' in last_log_line):
-                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'PASSED'
                         self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'PASSED'
 
                         last_log_line_split = last_log_line.split()
@@ -353,7 +350,6 @@ class Camus:
                         self.sisyphus_dictionary[f'{calculation_label}']['delta_e_final_initial'] = float(last_log_line_split[9])
                     
                     else:
-                        self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
                         self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'CALCULATION_FAILED'
 
                     minima_files = sorted(glob.glob('*minimum*xyz'), key=lambda x: int(x.split('_')[-1].split('.')[0]))
@@ -611,7 +607,7 @@ class Camus:
         os.chdir(start_cwd)
 
     def parse_batch_calculation(self, specorder=None, base_directory=None, jobs_info_dict_filename=None, calculation_type='LAMMPS_minimization',
-            save_traj=True, traj_filename='minimized_structures.traj'):
+            save_traj=True, traj_filename='minimized_structures.traj', **kwargs):
         """
         Note: run self.Cscheduler.check_job_list_status() before parsing to get updated jobs info.
         Parses results from calculations of `calculation_type` in subdirectories of `base_directory`. If `base_directory` is not given,
@@ -660,7 +656,7 @@ class Camus:
                 write(os.path.join(f'{base_directory}', traj_filename), clean_scfs)
 
         elif calculation_type == 'Sisyphus':
-            self.parse_batch_sisyphus(base_directory=base_directory, jobs_info=self.Cscheduler.jobs_info, specorder=specorder)
+            self.parse_batch_sisyphus(base_directory=base_directory, jobs_info=self.Cscheduler.jobs_info, specorder=specorder, **kwargs)
 
         else:
             raise Exception(f"Calculation type {calculation_type} not implemented.")
