@@ -12,6 +12,8 @@ import glob
 
 from abc import ABC, abstractmethod
 
+from camus.utils import save_to_pickle, load_pickle
+
 class Scheduler(ABC):
 
     def __init__(self, scheduler_parameters=None):
@@ -246,7 +248,7 @@ module purge
         if not jobs_info_filename:
             jobs_info_filename = glob.glob(os.path.join(f'{base_directory}', '*_info.pkl'))[0]
 
-        self.jobs_info = self.load_pickle(os.path.join(f'{base_directory}', jobs_info_filename))
+        self.jobs_info = load_pickle(os.path.join(f'{base_directory}', jobs_info_filename))
         self.job_ids = list(self.jobs_info.keys())
 
         # Check running jobs status
@@ -255,21 +257,9 @@ module purge
                 self.check_job_status(job_id, max_queuetime, max_runtime)
             
             # Save updated jobs info
-            self.save_to_pickle(self.jobs_info, os.path.join(f'{base_directory}', jobs_info_filename))
+            save_to_pickle(self.jobs_info, os.path.join(f'{base_directory}', jobs_info_filename))
             
             # Wait some time before checking again
             time.sleep(sleep_time)
 
-
-    # Utility methods to save and load pickle files, may consider moving to class Utils
-
-    @staticmethod
-    def save_to_pickle(object, path_to_file):
-        with open(path_to_file, 'wb') as handle:
-            pickle.dump(object, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    @staticmethod
-    def load_pickle(path_to_file):
-        with open(path_to_file, 'rb') as handle:
-            return pickle.load(handle)
 

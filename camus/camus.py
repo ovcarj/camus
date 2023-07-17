@@ -20,6 +20,7 @@ from ase.io import write, read
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
+from camus.utils import save_to_pickle, load_pickle
 
 scheduler_module = importlib.import_module('camus.scheduler')
 dft_module = importlib.import_module('camus.dft')
@@ -247,7 +248,7 @@ class Camus:
             os.chdir(base_directory)
 
         # Save initial jobs info to pickle files
-        self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
+        save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
         os.chdir(start_cwd)
 
@@ -384,12 +385,12 @@ class Camus:
                         initial_sisyphus_structure = self.Cstructures.parse_lammps_dump(specorder=specorder, log_lammps='initial_lammps.out', dump_name='initial_sisyphus_structure.xyz')
                         self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].insert(0, initial_sisyphus_structure)
 
-                        # Write all transition if requested
+                        # Write all transitions if requested
                         if write_all_transitions:
                             if ((self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED') or ('FAILED_' in self.sisyphus_dictionary[f'{calculation_label}']['status'])):
                                 write(os.path.join(transitions_all_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
 
-                        # Write passed/failed transition if requested
+                        # Write passed/failed transitions if requested
                         if write_pass_fail:
                             if self.sisyphus_dictionary[f'{calculation_label}']['status'] == 'PASSED':
                                 write(os.path.join(transitions_passed_directory, f'{calculation_label}_t.traj'), self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'])
@@ -409,7 +410,7 @@ class Camus:
                     self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
                     self.sisyphus_dictionary[f'{calculation_label}']['status'] = 'CALCULATION_FAILED'
 
-        self.Cscheduler.save_to_pickle(self.sisyphus_dictionary, os.path.join(f'{base_directory}', 'sisyphus_dictionary.pkl'))
+        save_to_pickle(self.sisyphus_dictionary, os.path.join(f'{base_directory}', 'sisyphus_dictionary.pkl'))
         os.chdir(start_cwd)
 
     def create_lammps_calculation(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
@@ -602,7 +603,7 @@ class Camus:
             os.chdir(base_directory)
 
         # Save initial jobs info to pickle files
-        self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
+        save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
         os.chdir(start_cwd)
 
@@ -630,7 +631,7 @@ class Camus:
         if not jobs_info_dict_filename:
             jobs_info_filename = glob.glob(os.path.join(f'{base_directory}', '*_info.pkl'))[0]
 
-        self.Cscheduler.jobs_info = self.Cscheduler.load_pickle(os.path.join(f'{base_directory}', jobs_info_filename))
+        self.Cscheduler.jobs_info = load_pickle(os.path.join(f'{base_directory}', jobs_info_filename))
 
         if calculation_type == 'LAMMPS_minimization':
 
@@ -661,7 +662,7 @@ class Camus:
         else:
             raise Exception(f"Calculation type {calculation_type} not implemented.")
 
-        self.Cscheduler.save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
+        save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
     def parse_batch_lammps(self, specorder, jobs_info, calculation_type, results_structure_filename=None):
         """

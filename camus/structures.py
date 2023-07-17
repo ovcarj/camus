@@ -20,6 +20,8 @@ from dscribe.kernels import AverageKernel
 
 from collections import Counter
 
+from camus.utils import save_to_pickle, load_pickle
+
 class Structures:
 
     def __init__(self, structures=None, training_set=None, validation_set=None, test_set=None, 
