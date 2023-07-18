@@ -10,6 +10,8 @@ import numpy as np
 import os
 import glob
 
+from functools import cached_property
+
 from ase import Atom, Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
 
@@ -582,7 +584,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
 class STransition():
 
-    def __init__(self, stransition=None, base_directory=None, sisyphus_dictionary_path=None, calculation_label=None, **kwargs):
+    def __init__(self, stransition=None, base_directory=None, sisyphus_dictionary_path=None, calculation_label=None, use_IRA=False, **kwargs):
         """
         Initializes a new STransition object which stores and analyzes all information from a single transition obtained from a Sisyphus calculation.
         `stransition` is assumed to be a (key, value) pair from `sisyphus_dictionary.pkl`.
@@ -620,9 +622,87 @@ class STransition():
 
         for key in stransition_info.keys():
 
-            if 'structures' not in key:
+            if ('structures' not in key):
                 setattr(self, key, stransition_info[key])
 
             else:
                 setattr(self, key, Structures(stransition_info[key]))
 
+        self.use_IRA = use_IRA
+        self.activation_e_forward = np.max(self.all_energies) - self.all_energies[0]  #added this in case maximum saddlepoint_e < maximum minimum_e
+
+    # cached_property used intentionally as an example
+    # calculates energies for each transition (saddlepoint_n - minimum_n)
+    @cached_property
+    def small_transition_energies(self):
+        energies = self.saddlepoints_energies - self.minima_energies[:len(self.saddlepoints_energies)]
+        return energies
+
+    # get displacements between initial (minimized) structure and all other structures
+    @cached_property
+    def displacements(self):
+
+        displacements_list = []
+        initial_structure = self.transition_structures.structures[0] 
+        
+        for i, transition_structure in enumerate(self.transition_structures.structures):
+
+            if self.use_IRA:
+                permutations, distances = calculate_displacement_IRA(initial_structure, transition_structure)
+                displacements_list.append(distances)
+
+            else:
+                distances = calculate_displacement(initial_structure, transition_structure)
+                displacements_list.append(distances)
+
+        return np.array(displacements_list)
+
+
+
+"""
+Various helper functions start here
+"""
+
+
+def calculate_displacement_IRA(atoms1, atoms2):
+    """
+    Calculates per-atom displacement between two ASE atoms objects using the IRA method.
+    See https://github.com/mammasmias/IterativeRotationsAssignments
+    """
+
+    try:
+        import ira_mod
+
+        ira = ira_mod.IRA()
+    
+        nat1, nat2 = len(atoms1), len(atoms2)
+        symbols1, symbols2 = atoms1.get_chemical_symbols(), atoms2.get_chemical_symbols()
+        positions1, positions2 = atoms1.get_positions(), atoms2.get_positions()
+        cell = np.array(atoms1.get_cell())
+    
+        permutations, distances = ira.cshda(nat1=nat1, nat2=nat2, coords1=positions1, coords2=positions2, lat=cell)
+    
+        return permutations, distances
+
+    except ImportError:
+        print('IRA not found (install from https://github.com/mammasmias/IterativeRotationsAssignments)')
+
+
+
+def calculate_displacement(atoms1, atoms2):
+    """
+    Calculates per-atom displacement between two ASE atoms.
+    """
+
+    # Get the cell parameters (assumes same cell between structures)
+    cell = atoms1.get_cell()
+
+    # Apply PBC to the coordinates of atoms2 relative to atoms1
+    displacement_vectors = atoms2.get_positions(wrap=True) - atoms1.get_positions(wrap=True)
+
+    # Apply minimum image convention to handle periodicity
+    displacement_vectors -= np.round(displacement_vectors.dot(np.linalg.inv(cell))) @ cell
+
+    displacement_magnitude = np.linalg.norm(displacement_vectors, axis=1)
+
+    return displacement_magnitude

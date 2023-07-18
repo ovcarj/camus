@@ -10,7 +10,7 @@ echo '' >> ~/.bashrc
 
 # Define python path
 WD=$(pwd)
-echo 'export PYTHONPATH='$WD':$PYTHONPATH' >> ~/.bashrc
+echo 'export PYTHONPATH='$WD':/optional_path/to/IRA_interface/:$PYTHONPATH' >> ~/.bashrc
 
 # Define path to the Camus directory
 echo 'export CAMUS_BASE='$WD'' >> ~/.bashrc

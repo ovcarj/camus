@@ -384,6 +384,7 @@ class Camus:
                         # Initial sisyphus structure is inserted as a first point of the transition
                         initial_sisyphus_structure = self.Cstructures.parse_lammps_dump(specorder=specorder, log_lammps='initial_lammps.out', dump_name='initial_sisyphus_structure.xyz')
                         self.sisyphus_dictionary[f'{calculation_label}']['transition_structures'].insert(0, initial_sisyphus_structure)
+                        self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'].insert(0, initial_sisyphus_structure)
 
                         # Write all transitions if requested
                         if write_all_transitions:
