@@ -46,143 +46,61 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         """
 
         if structures is not None:
-            self._structures = structures
+            self.structures = structures
         else:
-            self._structures = []
+            self.structures = []
 
         if training_set is not None:
-            self._training_set = training_set
+            self.training_set = training_set
         else:
-            self._training_set = []
+            self.training_set = []
 
         if validation_set is not None:
-            self._validation_set = validation_set
+            self.validation_set = validation_set
         else:
-            self._validation_set = []
+            self.validation_set = []
 
         if test_set is not None:
-            self._test_set = test_set
+            self.test_set = test_set
         else:
-            self._test_set = []
+            self.test_set = []
 
         if sisyphus_set is not None:
-            self._sisyphus_set = sisyphus_set
+            self.sisyphus_set = sisyphus_set
         else:
-            self._sisyphus_set = []
+            self.sisyphus_set = []
 
         if minimized_set is not None:
-            self._minimized_set = minimized_set
+            self.minimized_set = minimized_set
         else:
-            self._minimized_set = []
+            self.minimized_set = []
 
         if descriptors is not None:
-            self._descriptors = descriptors
+            self.descriptors = descriptors
         else:
-            self._descriptors = []
+            self.descriptors = []
 
         if acsf_parameters is not None:
-            self._acsf_parameters = acsf_parameters
+            self.acsf_parameters = acsf_parameters
         else:
-            self._acsf_parameters = {}
+            self.acsf_parameters = {}
+            
+    @cached_property
+    def chemical_symbols(self):
+        """ Creates a list of chemical symbols for each structure in the
+        Structures instance. Note: group_by_composition() should be updated accordingly.
+        """
 
-    @property
-    def structures(self):
-        return self._structures
+        symbols = []
 
-    @structures.setter
-    def structures(self, new_structures):
-        self._structures = new_structures
+        for structure in self.structures:
+            symbols.append(structure.get_chemical_symbols())
 
-    @structures.deleter
-    def structures(self):
-        del self._structures
-
-    @property
-    def training_set(self):
-        return self._training_set
-
-    @training_set.setter
-    def training_set(self, new_structures):
-        self._training_set = new_structures
-
-    @training_set.deleter
-    def training_set(self):
-        del self._training_set
-
-    @property
-    def validation_set(self):
-        return self._validation_set
-
-    @validation_set.setter
-    def validation_set(self, new_structures):
-        self._validation_set = new_structures
-
-    @validation_set.deleter
-    def validation_set(self):
-        del self._validation_set
-
-    @property
-    def test_set(self):
-        return self._test_set
-
-    @test_set.setter
-    def test_set(self, new_structures):
-        self._test_set = new_structures
-
-    @test_set.deleter
-    def test_set(self):
-        del self._test_set
-
-    @property
-    def sisyphus_set(self):
-        return self._sisyphus_set
-
-    @sisyphus_set.setter
-    def sisyphus_set(self, new_structures):
-        self._sisyphus_set = new_structures
-
-    @sisyphus_set.deleter
-    def sisyphus_set(self):
-        del self._sisyphus_set
-
-    @property
-    def minimized_set(self):
-        return self._minimized_set
-
-    @minimized_set.setter
-    def minimized_set(self, new_structures):
-        self._minimized_set = new_structures
-
-    @minimized_set.deleter
-    def minimized_set(self):
-        del self._minimized_set
-
-    @property
-    def descriptors(self):
-        return self._descriptors
-
-    @descriptors.setter
-    def descriptors(self, new_descriptors):
-        self._descriptors = new_descriptors
-
-    @descriptors.deleter
-    def descriptors(self):
-        del self._descriptors
-
-    @property
-    def acsf_parameters(self):
-        return self._acsf_parameters
-
-    @acsf_parameters.setter
-    def acsf_parameters(self, new_acsf_parameters):
-        self._acsf_parameters = new_acsf_parameters
-
-    @acsf_parameters.deleter
-    def acsf_parameters(self):
-        del self._acsf_parameters
+        return symbols
+        
 
     def set_acsf_parameters(self, **kwargs):
-        """ Method that sets parameters to be used for creating the ACSF descriptors in self._acsf_parameters dictionary.
+        """ Method that sets parameters to be used for creating the ACSF descriptors in self.acsf_parameters dictionary.
 
         Parameters:
             parameter: parameter description placeholder
@@ -201,9 +119,9 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             if key not in default_parameters:
                 raise RuntimeError('Unknown keyword: %s' % key)
 
-        # Set self._acsf_parameters
+        # Set self.acsf_parameters
         for key, value in default_parameters.items():
-            self._acsf_parameters[key] = kwargs.pop(key, value)
+            self.acsf_parameters[key] = kwargs.pop(key, value)
 
     def calculate_descriptors(self, input_structures=None):
 
@@ -480,7 +398,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         """
         #charges_input
         if charges_input is not None:
-            self._charges_input = charges_input
+            self.charges_input = charges_input
         else:
             charges_input = {
                     'Pb': 0.9199,
@@ -603,6 +521,15 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
     displacements = cached_property(get_displacements)
 
+    def get_rmsd(self, reference_index=0, use_IRA=False):
+        """
+        Calculates the RMSD between `reference` structure (given by index) and all other structures.
+        No prealignment is performed.
+        """
+        ...
+
+
+
 
 
 class STransition():
@@ -632,16 +559,16 @@ class STransition():
             if sisyphus_dictionary_path is not None:
                 self._sisyphus_dictionary_path = sisyphus_dictionary_path
             else:
-                self._sisyphus_dictionary_path = os.path.join(f'{self._base_directory}', 'sisyphus_dictionary.pkl')
+                self._sisyphus_dictionary_path = os.path.join(f'{self.base_directory}', 'sisyphus_dictionary.pkl')
 
-            self._sisyphus_dictionary = load_pickle(self._sisyphus_dictionary_path)
+            self.sisyphus_dictionary = load_pickle(self.sisyphus_dictionary_path)
             
             if calculation_label is not None:
                 self._stransition_label = calculation_label
             else:
-                self._stransition_label = list(self._sisyphus_dictionary.keys())[0]
+                self._stransition_label = list(self.sisyphus_dictionary.keys())[0]
 
-            stransition_info = self._sisyphus_dictionary[self._stransition_label]
+            stransition_info = self.sisyphus_dictionary[self.stransition_label]
 
         for key in stransition_info.keys():
 
@@ -654,7 +581,9 @@ class STransition():
         self.activation_e_forward = np.max(self.all_energies) - self.all_energies[0]  #added this in case maximum saddlepoint_e < maximum minimum_e
 
     # cached_property used intentionally as an example
-    # calculates energies for each transition (saddlepoint_n - minimum_n)
+    """
+    Calculates the energy for each transition (saddlepoint_n - minimum_n)
+    """
     @cached_property
     def small_transition_energies(self):
         energies = self.saddlepoints_energies - self.minima_energies[:len(self.saddlepoints_energies)]
