@@ -581,16 +581,39 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
         return sorted_atoms
 
+    def get_displacements(self, reference_index=0, use_IRA=False):
+        """
+        Get displacements between `reference` structure (given by index) and all other structures.
+        """
+
+        displacements_list = []
+        reference_structure = self.structures[reference_index] 
+        
+        for i, structure in enumerate(self.structures):
+
+            if use_IRA:
+                permutations, distances = calculate_displacement_IRA(reference_structure, structure)
+                displacements_list.append(distances)
+
+            else:
+                distances = calculate_displacement(reference_structure, structure)
+                displacements_list.append(distances)
+
+        return np.array(displacements_list)
+
+    displacements = cached_property(get_displacements)
+
+
 
 class STransition():
 
-    def __init__(self, stransition=None, base_directory=None, sisyphus_dictionary_path=None, calculation_label=None, use_IRA=False, **kwargs):
+    def __init__(self, stransition=None, base_directory=None, sisyphus_dictionary_path=None, calculation_label=None, **kwargs):
         """
         Initializes a new STransition object which stores and analyzes all information from a single transition obtained from a Sisyphus calculation.
         `stransition` is assumed to be a (key, value) pair from `sisyphus_dictionary.pkl`.
 
         If `stransition` is not given, an entry from `sisyphus_dictionary.pkl` is read from `sisyphus_dictionary_path` (this is mainly for testing purposes). 
-        If `sisyphus_dictionary_path` is not given, it's searched for in `base_directory`.
+        f `sisyphus_dictionary_path` is not given, it's searched for in `base_directory`.
         If `base_directory` is not given, CWD is assumed.
 
         Parameters:
@@ -628,7 +651,6 @@ class STransition():
             else:
                 setattr(self, key, Structures(stransition_info[key]))
 
-        self.use_IRA = use_IRA
         self.activation_e_forward = np.max(self.all_energies) - self.all_energies[0]  #added this in case maximum saddlepoint_e < maximum minimum_e
 
     # cached_property used intentionally as an example
@@ -638,24 +660,6 @@ class STransition():
         energies = self.saddlepoints_energies - self.minima_energies[:len(self.saddlepoints_energies)]
         return energies
 
-    # get displacements between initial (minimized) structure and all other structures
-    @cached_property
-    def displacements(self):
-
-        displacements_list = []
-        initial_structure = self.transition_structures.structures[0] 
-        
-        for i, transition_structure in enumerate(self.transition_structures.structures):
-
-            if self.use_IRA:
-                permutations, distances = calculate_displacement_IRA(initial_structure, transition_structure)
-                displacements_list.append(distances)
-
-            else:
-                distances = calculate_displacement(initial_structure, transition_structure)
-                displacements_list.append(distances)
-
-        return np.array(displacements_list)
 
 
 
