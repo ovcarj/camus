@@ -548,25 +548,54 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         return average_displacement_per_type
 
 
-    def get_maximum_displacement_per_type(self, reference_index=0, use_IRA=False):
+    def get_average_displacement_all_structures(self, reference_index=0, use_IRA=False):
         """
-        Calculates the maximum displacement for each chemical species between `reference` structure (given by index) and all other structures.
+        Calculates the average displacement from a `reference` structure for each chemical species 
+        across all structures.
+        """
+
+        average_displacement_per_type = self.get_average_displacement_per_type(reference_index=reference_index, use_IRA=use_IRA)
+        average_displacement_all_structures = {chemical_type: np.average(value) for chemical_type, value in average_displacement_per_type.items()}
+
+        return average_displacement_all_structures
+
+
+    def get_maximum_displacements_per_type(self, reference_index=0, use_IRA=False):
+        """
+        Calculates the maximum displacements for each chemical species between `reference` structure (given by index) and all other structures.
         No prealignment is performed.
         """
 
         displacements_per_type = self.get_displacements_per_type(reference_index=reference_index, use_IRA=use_IRA)
-        maximum_displacement_per_type = {chemical_type: {'maximum_displacement': np.max(value['displacements'], axis=1), 
-            'index': np.array([displacements_per_type[chemical_type]['indices'][m] for m in np.argmax(value['displacements'], axis=1)])} 
+        maximum_displacements_per_type = {chemical_type: {'maximum_displacements': np.max(value['displacements'], axis=1), 
+            'atomic_index': np.array([displacements_per_type[chemical_type]['indices'][m] for m in np.argmax(value['displacements'], axis=1)])} 
             for chemical_type, value in displacements_per_type.items()}
 
-        return maximum_displacement_per_type
+        return maximum_displacements_per_type
+
+
+    def get_maximum_displacement_all_structures(self, reference_index=0, use_IRA=False):
+        """
+        Calculates the maximum of all displacements for each chemical species between `reference` structure (given by index) and all other structures.
+        No prealignment is performed.
+        """
+
+        maximum_displacements_per_type = self.get_maximum_displacements_per_type(reference_index=reference_index, use_IRA=use_IRA)
+        maximum_displacement_all_structures = {chemical_type: {'maximum_displacement': np.max(value['maximum_displacements']), 
+            'atomic_index': value['atomic_index'][np.argmax(value['maximum_displacements'])],
+            'structure_index': np.argmax(value['maximum_displacements'])} 
+            for chemical_type, value in maximum_displacements_per_type.items()}
+
+        return maximum_displacement_all_structures
 
 
     # Testing if it makes sense to put these methods as cached properties, maybe is convenient
     displacements = cached_property(get_displacements)
     displacements_per_type = cached_property(get_displacements_per_type)
     average_displacement_per_type = cached_property(get_average_displacement_per_type)
-    maximum_displacement_per_type = cached_property(get_maximum_displacement_per_type)
+    average_displacement_all_structures = cached_property(get_average_displacement_all_structures)
+    maximum_displacements_per_type = cached_property(get_maximum_displacements_per_type)
+    maximum_displacement_all_structures = cached_property(get_maximum_displacement_all_structures)
 
 
 class STransition():
