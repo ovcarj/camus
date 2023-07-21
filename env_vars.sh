@@ -21,6 +21,9 @@ echo 'export CAMUS_LAMMPS_DATA_DIR=~/.CAMUS/LAMMPS_data' >> ~/.bashrc
 # Define default Sisyphus data target directory
 echo 'export CAMUS_SISYPHUS_DATA_DIR=~/.CAMUS/SISYPHUS_data' >> ~/.bashrc
 
+# Define default Sisyphus analysis target directory
+echo 'export CAMUS_SISYPHUS_ANALYSIS_DIR=~/.CAMUS/SISYPHUS_data/analysis' >> ~/.bashrc
+
 # Define default LAMMPS minimization target directory
 echo 'export CAMUS_LAMMPS_MINIMIZATION_DIR=~/.CAMUS/LAMMPS_minimization' >> ~/.bashrc
 

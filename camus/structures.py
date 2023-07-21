@@ -636,7 +636,8 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         xticks = list(chemical_species)
         plt.xticks(np.arange(1, len(xticks) + 1), xticks, fontsize=18)
         ax.minorticks_on()
-        ax.tick_params(axis='y', direction='in', which='both', labelsize=15)
+        ax.tick_params(axis='y', direction='in', which='both', labelsize=15, length=8)
+        ax.tick_params(axis='y', which='minor', length=4)
         ax.tick_params(axis='x', which='both', bottom=False)
 
         ax.legend(handles=[bar_average, bar_maximum], loc='best', fontsize=15)
@@ -652,7 +653,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             return fig, ax
 
 
-    # Testing if it makes sense to put these methods as cached properties, maybe is convenient
+    # Testing if it makes sense to put these methods as cached properties, maybe it will be convenient
     displacements = cached_property(get_displacements)
     displacements_per_type = cached_property(get_displacements_per_type)
     average_displacement_per_type = cached_property(get_average_displacement_per_type)
@@ -672,12 +673,17 @@ class STransition():
         f `sisyphus_dictionary_path` is not given, it's searched for in `base_directory`.
         If `base_directory` is not given, CWD is assumed.
 
+        List of available attributes:
+            activation_e_forward, directory, small_transition_energies, all_energies, minima_energies, 
+            status, basin_counters, minima_structures, transition_structures, 
+            delta_e_final_initial, saddlepoints_energies, delta_e_final_top, saddlepoints_structures
+
         Parameters:
             to_be_written (TODO): TODO.
         """
 
         if stransition is not None:
-            self.stransition_label, stransition_info = stransition
+            self._stransition_label, stransition_info = stransition
 
         else:
             if base_directory is not None:
@@ -717,6 +723,106 @@ class STransition():
     def small_transition_energies(self):
         energies = self.saddlepoints_energies - self.minima_energies[:len(self.saddlepoints_energies)]
         return energies
+
+
+class STransitions():
+
+    def __init__(self, sisyphus_dictionary=None, base_directory=None, sisyphus_dictionary_path=None, 
+            sisyphus_analysis_directory=None, save_analysis=False, **kwargs):
+        """
+        Initializes a new STransitions object which stores and analyzes all information from all Sisyphus calculations in a `sisyphus_dictionary.pkl`.
+        Analysis can be saved to `sisyphus_analysis_directory` if `save_analysis` == True.
+
+        `sisyphus_dictionary` should be the loaded `sisyphus_dictionary.pkl`.
+
+        If `stransitions_pickle` is not given, `sisyphus_dictionary.pkl` is tried to be read from `sisyphus_dictionary_path`. 
+        f `sisyphus_dictionary_path` is not given, `sisyphus_dictionary.pkl` is searched for in `base_directory`.
+        If `base_directory` is not given, CWD is assumed.
+
+        Parameters:
+            to_be_written (TODO): TODO.
+        """
+
+        # Read Sisyphus dictionary
+        if sisyphus_dictionary is not None:
+            self._sisyphus_dictionary = sisyphus_dictionary
+
+        else:
+            if base_directory is not None:
+                self._base_directory = base_directory
+            else:
+                self._base_directory = os.getcwd()
+
+            if sisyphus_dictionary_path is not None:
+                self._sisyphus_dictionary_path = sisyphus_dictionary_path
+                self._sisyphus_dictionary = camus.utils.load_pickle(sisyphus_dictionary_path)
+
+            else:
+                self._sisyphus_dictionary_path = os.path.join(f'{self._base_directory}', 'sisyphus_dictionary.pkl')
+
+            self._sisyphus_dictionary = camus.utils.load_pickle(self._sisyphus_dictionary_path)
+            
+        # Get Sisyphus analysis directory path
+        if sisyphus_analysis_directory is not None:
+            self._sisyphus_analysis_directory = sisyphus_analysis_directory
+
+        else:
+            self._sisyphus_analysis_directory = os.environ.get('CAMUS_SISYPHUS_ANALYSIS_DIR')
+
+
+        # Initialize self.stransitions attribute as a dictionary of STransitions objects
+
+        self.stransitions = {key: STransition(stransition=(key, value)) for key, value in self._sisyphus_dictionary.items()}
+
+        # Initialize self.stransitions_properties dictionary
+
+        self.stransitions_properties = dict.fromkeys(self.stransitions.keys(), dict())
+
+    def get_stransition_property(self, calculation_label, stransition_property):
+        """
+        Stores STransition object property in a dictionary of form {calculation_label: {property: value}} 
+        """
+
+        # Special case for displacements
+        displacement_types = ['average_displacement_all_structures', 'average_displacement_per_type', 'displacements', 'displacements_per_type', 
+                'maximum_displacement_all_structures', 'maximum_displacements_per_type']
+
+        structure_types = ['minima_structures', 'saddlepoints_structures', 'transition_structures']
+
+        if (stransition_property == 'displacements'):
+
+            for structure_type in structure_types:
+
+                for displacement_type in displacement_types:
+                
+                    property_name = f'{structure_type.split("_")[0]}_{displacement_type}'
+
+                    self.stransitions_properties[calculation_label].update({property_name: 
+                            self.stransitions[calculation_label].__getattribute__(structure_type).__getattribute__(displacement_type)})
+
+        # Standard case
+        else:
+            
+            self.stransitions_properties[calculation_label].update({stransition_property: 
+                self.stransitions[calculation_label].__getattribute__(stransition_property)})
+
+    def get_all_properties(self):
+        """
+        Stores all properties of STransition to self.stransitions_properties 
+        (except for structures; but stores displacements).
+        """
+
+        calculation_labels = [key for key in self.stransitions.keys()]
+
+        attributes = [attribute for attribute in dir(self.stransitions[calculation_labels[0]])
+                if (not attribute.startswith('_') and not 'structures' in attribute)]
+
+        for calculation_label in calculation_labels:
+
+            for attribute in attributes:
+
+                self.get_stransition_property(calculation_label, attribute)
+                self.get_stransition_property(calculation_label, 'displacements')
 
 
 
