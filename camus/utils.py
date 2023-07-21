@@ -1,4 +1,5 @@
 import pickle
+import matplotlib.pyplot as plt
 
 # Utility functions to save and load pickle files
 
@@ -12,8 +13,8 @@ def load_pickle(path_to_file):
 
 def create_index_dict(input_list):
     """
-    Takes a list as input and returns a dictionary where the keys are the unique elements found in the input list, and the values are lists containing the indices at which each element appears in the input list.
-
+    Takes a list as input and returns a dictionary where the keys are the unique elements found in the input list, 
+    and the values are lists containing the indices at which each element appears in the input list.
     """
 
     index_dict = {}
@@ -25,3 +26,14 @@ def create_index_dict(input_list):
             index_dict[element].append(index)
             
     return index_dict
+
+def create_plot(xlabel='x', ylabel='y', sizex=15.0, sizey=15.0, fontsize=15):
+    """
+    Creates a basic empty plot with some frequent settings.
+    """
+    fig, ax = plt.subplots(figsize=(sizex, sizey))
+    ax.set_xlabel(xlabel, fontsize=fontsize)
+    ax.set_ylabel(ylabel, fontsize=fontsize)
+    ax.tick_params(direction='in', which='both', labelsize='large')
+    return fig, ax
+

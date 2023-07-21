@@ -9,6 +9,7 @@ import random
 import numpy as np
 import os
 import glob
+import matplotlib.pyplot as plt
 
 import camus.utils
 
@@ -587,6 +588,68 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             for chemical_type, value in maximum_displacements_per_type.items()}
 
         return maximum_displacement_all_structures
+
+    def plot_displacements(self, reference_index=0, savefig=False, save_format='pdf', dpi=400, fname='displacements', return_fig_ax=False):
+        """
+        Plots average and maximum displacements from a reference structure for a Structures object.
+        For now, testing if returning fig, ax makes sense (for other plots).
+        """
+
+        # Get data
+
+        average_displacement_per_type = self.average_displacement_per_type
+        average_displacement_all_structures = self.average_displacement_all_structures
+        maximum_displacements_per_type = self.maximum_displacements_per_type
+        maximum_displacement_all_structures = self.maximum_displacement_all_structures
+
+        chemical_species = average_displacement_per_type.keys()
+        no_of_structures = len(self.structures) - 1  #Won't plot reference structure
+
+        all_indices = np.arange(0, no_of_structures + 1, 1)
+        relevant_indices = np.delete(all_indices, np.where(all_indices == reference_index))
+
+        # Plot definition, colors, bar widths
+
+        fig, ax = camus.utils.create_plot(xlabel='', ylabel=r'Displacement $(\AA)$', fontsize=18)
+
+        total_width = 0.75
+        width = total_width / no_of_structures
+
+        # Iterate over chemical species and number of structures
+
+        for i, species in enumerate(chemical_species):
+
+            for j, index in enumerate(relevant_indices):
+
+                x = i + 1 + total_width * (j / no_of_structures - 0.5)
+
+                color1 = 'royalblue'
+                color2 = 'salmon'
+
+                bar_maximum = ax.bar(x, maximum_displacements_per_type[species]['maximum_displacements'][index], 
+                        width=width, color=color2, align='edge', edgecolor='black', linewidth=0.7, label='Maximum displacement')
+                bar_average = ax.bar(x, average_displacement_per_type[species][index], 
+                        width=width, color=color1, align='edge', edgecolor='black', linewidth=0.7, label='Average displacement')
+
+        # Define xticks, legend, etc...
+
+        xticks = list(chemical_species)
+        plt.xticks(np.arange(1, len(xticks) + 1), xticks, fontsize=18)
+        ax.minorticks_on()
+        ax.tick_params(axis='y', direction='in', which='both', labelsize=15)
+        ax.tick_params(axis='x', which='both', bottom=False)
+
+        ax.legend(handles=[bar_average, bar_maximum], loc='best', fontsize=15)
+        
+        # Save plot
+
+        if savefig == False:
+            plt.show()
+        elif savefig == True:
+            plt.savefig(fname=fname + '.' + save_format, format=save_format, bbox_inches='tight', dpi=dpi)
+
+        if return_fig_ax:
+            return fig, ax
 
 
     # Testing if it makes sense to put these methods as cached properties, maybe is convenient
