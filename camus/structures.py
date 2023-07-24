@@ -827,6 +827,119 @@ class STransitions():
             self.get_stransition_property(calculation_label, 'displacements')
 
 
+def plot_stransition(self, function=None, **kwargs):
+
+    '''
+    customizable parameters:
+        -
+    functions:
+        - `basin_counters` ... will additionally plot the number of times ARTn had to be restarted from each minimum
+        - `small_transition_energies` ... will additionally plot the height of each `small transition` along the STransition path 
+        - `displacement`
+    '''
+
+    initial_structure = self.all_energies[0]
+    initial_structure -= initial_structure
+
+    transition_structure = np.max(self.all_energies)
+    transition_structure -= self.all_energies[0] 
+
+    minima_energies = self.minima_energies
+    minima_energies -= self.all_energies[0] 
+
+    saddlepoints_energies = self.saddlepoints_energies
+    saddlepoints_energies -= self.all_energies[0] 
+
+    all_energies = self.all_energies 
+    all_energies -= self.all_energies[0] 
+    all_indices = range(len(all_energies))
+
+    transition_index, = np.where(all_energies == transition_structure)
+    transition_index = int(transition_index)
+
+    minima_indices, saddlepoints_indices = [], []
+    for a in all_indices: minima_indices.append(a) if a%2 == 0 else saddlepoints_indices.append(a)
+
+    # Parameter_dict
+    default_parameters = {
+        'xlabel': None,
+        'ylabel': None,
+        'plot_title': None,
+        'size_xy': (float(10), float(7.5)),
+        'annotate_x': float(),
+        'annotate_y': float(),
+        'size_of_marker': float(65),
+        'fontsize': 15,
+        'color': [
+            'gray', #throughline
+            'cyan', #minima
+            'black',  #saddles
+            'limegreen', #initial
+            'blue',  #transition
+            'red' #thresholds
+            ],
+        'xticks': all_indices,
+        'legend': False,
+        'save_as': None
+        }
+
+    for key in kwargs:
+        if key not in default_parameters:
+            raise RuntimeError('Unknown keyword: %s' % key)
+
+    plot_parameters = {}
+    for key, value in default_parameters.items():
+        plot_parameters[key] = kwargs.pop(key, value)
+
+    # Set up the plot
+    fig, ax = plt.subplots(figsize=(plot_parameters['size_xy']))
+    # Throughline
+    ax.plot(all_indices, all_energies, color=plot_parameters['color'][0], ls='--', zorder=1)
+    # Points along the `STransition` path
+    ax.scatter(0, initial_structure, color=plot_parameters['color'][3], s=plot_parameters['size_of_marker'], marker='s',zorder=2, label='Initial structure')
+    ax.scatter(minima_indices[1:], minima_energies[1:], color=plot_parameters['color'][1], s=plot_parameters['size_of_marker'], zorder=2)
+    ax.scatter(saddlepoints_indices[:int(transition_index/2)], saddlepoints_energies[:int(transition_index/2)], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
+    ax.scatter(transition_index, transition_structure, color=plot_parameters['color'][4], s=plot_parameters['size_of_marker']+50, marker='p', zorder=2, label='Transition state')
+    ax.scatter(saddlepoints_indices[int(transition_index/2+1):], saddlepoints_energies[int(transition_index/2+1):], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
+
+    # Threshold lines
+    ax.axhline(y=abs(self.delta_e_final_top), ls='dotted', color=plot_parameters['color'][5], zorder=0, label='Top/Bottom threshold')
+    ax.axhline(y=self.delta_e_final_initial, ls='dotted', color=plot_parameters['color'][5], zorder=0)
+    # Axes
+    ax.set_xlabel(plot_parameters['xlabel'], fontsize=plot_parameters['fontsize'])
+    ax.set_ylabel(plot_parameters['ylabel'], fontsize=plot_parameters['fontsize'])
+    ax.tick_params(direction='in', which='both', labelsize=plot_parameters['fontsize'])
+    ax.set_xticks(ticks=plot_parameters['xticks']) #which indices to plot along the axis
+
+    if plot_parameters['legend']:
+        plt.legend(fontsize=plot_parameters['fontsize']-2)
+
+    if plot_parameters['plot_title'] is not None:
+        plt.title(plot_parameters['plot_title'], fontsize=plot_parameters['fontsize'])
+
+    # Plot additional info
+    if function is not None:
+        if function == 'basin_counters':
+            transition_property = self.basin_counters 
+            property_indices = minima_indices[:-1]
+
+        if function == 'small_transition_energies':
+            transition_property = self.small_transition_energies 
+            property_indices = saddlepoints_indices
+
+        if function == 'maximum_displacement':
+            pass
+            #transition_property = [] 
+            #property_indices = minima_indices[1:]
+
+        for i, prop in enumerate(transition_property):
+            ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
+
+    # Save if you wish to
+    if plot_parameters['save_as'] is not None:
+        fig.savefig(fname=f"{plot_parameters['plot_title'].lower()}.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
+
+    plt.show()
 
 """
 Various helper functions start here
