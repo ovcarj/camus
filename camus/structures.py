@@ -780,7 +780,7 @@ class STransitions():
 
     def get_stransition_property(self, calculation_label, stransition_property):
         """
-        Stores STransition object property in a dictionary of form {calculation_label: {property: value}} 
+        Convenience method that copies STransition object property to a dictionary of form {calculation_label: {property: value}}.
         """
 
         # Special case for displacements
@@ -806,6 +806,7 @@ class STransitions():
             self.stransitions_properties[calculation_label].update({stransition_property: 
                 self.stransitions[calculation_label].__getattribute__(stransition_property)})
 
+
     def get_all_properties(self):
         """
         Stores all properties of STransition to self.stransitions_properties 
@@ -822,7 +823,8 @@ class STransitions():
             for attribute in attributes:
 
                 self.get_stransition_property(calculation_label, attribute)
-                self.get_stransition_property(calculation_label, 'displacements')
+
+            self.get_stransition_property(calculation_label, 'displacements')
 
 
 
