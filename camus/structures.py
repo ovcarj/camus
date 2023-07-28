@@ -99,6 +99,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
         return symbols
 
+
     def set_acsf_parameters(self, **kwargs):
         """ Method that sets parameters to be used for creating the ACSF descriptors in self.acsf_parameters dictionary.
 
@@ -141,45 +142,26 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             periodic=self.acsf_parameters['periodic']
             )
 
+        # Special case of single input structure:
+        if isinstance(input_structures, Atoms): input_structures = [input_structures]
+
         for atoms in input_structures:
             descriptor = acsf_descriptor.create(atoms)
             self.descriptors.append(descriptor)
 
-    @staticmethod
-    def find_unique_structures(reference_set_structures, candidate_set_structures, threshold=0.90, metric='laplacian', gamma=1):
-        # reference_set_structures and candidate_set_structures must be instances of Structures class
 
-        if not candidate_set_structures.descriptors:
-            candidate_set_structures.calculate_descriptors()
 
-        if not reference_set_structures.descriptors:
-            reference_set_structures.calculate_descriptors()
+    def group_by_composition(self, input_structures=None, specorder=None):
+        """
+        Groups structures into self.structures_grouped_by_composition dictionary of form
+        {(composition): {Structures(structure_group), indices: indices in original Structures.structures object}}
+        """
 
-        unique_structures = []
-        similarity_of_structures = []
+        if input_structures is None:
+            input_structures = self.structures
 
-        for i, candidate_descriptor in enumerate(candidate_set_structures.descriptors):
-            is_unique = True
-
-            for reference_descriptor in reference_set_structures.descriptors:
-                ak = AverageKernel(metric=metric, gamma=gamma) 
-                ak_kernel = ak.create([reference_descriptor, candidate_descriptor])
-                similarity = ak_kernel[0, 1]
-                similarity = round(similarity, 5) # arbitrary 5
-                if similarity >= threshold:
-                    is_unique = False
-                    break
-
-            if is_unique:
-                unique_structures.append(candidate_set_structures.structures[i])
-
-        return unique_structures
-
-    @staticmethod
-    def group_by_composition(input_structures, specorder):
-
+        # Get the unique chemical symbols present in the structures
         if specorder is None:
-            # Get the unique chemical symbols present in the structures
             chemical_symbols = set()
             for structure in input_structures:
                 chemical_symbols.update(structure.get_chemical_symbols())
@@ -199,56 +181,20 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         unique_counts = set(map(tuple, zip(*structure_counts.values())))
 
         # Filter the structures based on the unique count combinations
-        structures_grouped_by_composition = {count: [] for count in unique_counts}
+        self.structures_grouped_by_composition = {count: {'structures': camus.utils.new_list(), 'indices': camus.utils.new_list()} 
+                for count in unique_counts}
+
         for i, structure in enumerate(input_structures):
             counts = tuple(structure_counts[symbol][i] for symbol in chemical_symbols)
-            structures_grouped_by_composition[counts].append(structure)
+            self.structures_grouped_by_composition[counts]['structures'].append(structure)
+            self.structures_grouped_by_composition[counts]['indices'].append(i)
 
-        return structures_grouped_by_composition
+        # Change the groups structures to Structures instances
+        for count, group in self.structures_grouped_by_composition.items():
+            self.structures_grouped_by_composition[count]['structures'] = Structures(group['structures'])
 
-    @staticmethod
-    def find_unique_structures_by_composition(reference_set_structures, candidate_set_structures, threshold=0.90, metric='laplacian', gamma=1, specorder=None):
-        '''
-        find groups for reference set
-        find groups for candidate set
-        create a `common_compositions` dictionary {composition: reference_structures[], candidate[structures]}
-        if candidate set group not in reference_groups keys -> candidate `automatically unique`
-        find_unique_structures within the `common_compositions` dictionary
-        append all the `unique` structures into a single set of `unique_structures`
-        '''
 
-        # Create grouped datasets
-        reference_groups = Structures.group_by_composition(reference_set_structures, specorder=specorder)
-        candidate_groups = Structures.group_by_composition(candidate_set_structures, specorder=specorder)
-        
-        # Create sets of element compositions 
-        reference_compositions = set(reference_groups.keys())
-        candidate_compositions = set(candidate_groups.keys())
-        common_compositions = reference_compositions & candidate_compositions
 
-        # Initiate `common_compostion_groups` dictionary
-        common_composition_groups = {}
-        # Cycle through the compositions the two have in common and assign a reference and candidate set to each composition
-        for key in common_compositions:
-            common_composition_groups[key] = {
-                'reference_structures': reference_groups[key],
-                'candidate_structures': candidate_groups[key],
-            }
-       
-        unique_structures = []
-        
-        # If candidate not in common_groups then automatically considered `unique`
-        for key in candidate_compositions:
-            if key not in common_compositions:
-                unique_structures.extend(candidate_groups[key])
-
-        # Run `find_unique_structures` function within each composition group 
-        for key in common_compositions:
-            unique = Structures.find_unique_structures(reference_set_structures = Structures(common_composition_groups[key]['reference_structures']), candidate_set_structures = Structures(common_composition_groups[key]['candidate_structures']), threshold=threshold, metric=metric, gamma=gamma)
-            if unique != []:
-                unique_structures.extend(unique)
-        
-        return unique_structures
 
     def create_datasets(self, input_structures=None, training_percent=0.8, validation_percent=0.1, test_percent=0.1, randomize=True):
         """ Separates the structures from `input_structures` into training, validation and test sets.
@@ -279,6 +225,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         self.validation_set = structures[num_train:num_train+num_val]
         self.test_set = structures[num_train+num_val:]
 
+
     def create_sisyphus_set(self, input_structures=None, mode='random', indices=None, number_of_structures=5):
         """ Creates a `number_of_structures` of structures to be used as input structures for Sisyphus searches.
 
@@ -303,6 +250,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         else:
             raise ValueError("Unsupported mode. Choose 'random' or 'indices'.")
 
+
     def get_energies_and_forces(self, input_structures=None):
         """ Read the energies and forces for a set of structures.
 
@@ -326,6 +274,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             forces.append(force)
 
         return np.array(energies), np.array(forces)
+
 
     def write_lammps_data(self, target_directory=None, input_structures=None, prefixes='auto', specorder=None, write_masses=True,
             atom_style='atomic'):
@@ -422,6 +371,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
             structure.set_initial_charges(charges)
 
+
     @staticmethod
     def parse_lammps_dump(specorder, log_lammps='log.lammps', dump_name='minimized.xyz'):
         """
@@ -449,6 +399,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
                 break
 
         return structure
+
 
     @staticmethod
     def parse_sisyphus_xyz(filename, specorder):
@@ -589,6 +540,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
 
         return maximum_displacement_all_structures
 
+
     def plot_displacements(self, reference_index=0, savefig=False, save_format='pdf', dpi=400, fname='displacements', return_fig_ax=False):
         """
         Plots average and maximum displacements from a reference structure for a Structures object.
@@ -724,6 +676,116 @@ class STransition():
         energies = self.saddlepoints_energies - self.minima_energies[:len(self.saddlepoints_energies)]
         return energies
 
+    def plot_stransition(self, function=None, **kwargs):
+    
+        '''
+        customizable parameters:
+            -
+        functions:
+            - `basin_counters` ... will additionally plot the number of times ARTn had to be restarted from each minimum
+            - `small_transition_energies` ... will additionally plot the height of each `small transition` along the STransition path 
+            - `displacement`
+        '''
+    
+        initial_structure = self.all_energies[0]
+        initial_structure -= initial_structure
+    
+        transition_structure = np.max(self.all_energies)
+        transition_structure -= self.all_energies[0] 
+    
+        minima_energies = self.minima_energies
+        minima_energies -= self.all_energies[0] 
+    
+        saddlepoints_energies = self.saddlepoints_energies
+        saddlepoints_energies -= self.all_energies[0] 
+    
+        all_energies = self.all_energies 
+        all_energies -= self.all_energies[0] 
+        all_indices = range(len(all_energies))
+    
+        transition_index, = np.where(all_energies == transition_structure)
+        transition_index = int(transition_index)
+    
+        minima_indices, saddlepoints_indices = [], []
+        for a in all_indices: minima_indices.append(a) if a%2 == 0 else saddlepoints_indices.append(a)
+    
+        # Parameter_dict
+        default_parameters = {
+            'xlabel': None,
+            'ylabel': None,
+            'plot_title': None,
+            'size_xy': (float(10), float(7.5)),
+            'annotate_x': float(),
+            'annotate_y': float(),
+            'size_of_marker': float(65),
+            'fontsize': 15,
+            'color': [
+                'gray', #throughline
+                'cyan', #minima
+                'black',  #saddles
+                'limegreen', #initial
+                'blue',  #transition
+                'red' #thresholds
+                ],
+            'xticks': all_indices,
+            'legend': False,
+            'save_as': None
+            }
+    
+        for key in kwargs:
+            if key not in default_parameters:
+                raise RuntimeError('Unknown keyword: %s' % key)
+    
+        plot_parameters = {}
+        for key, value in default_parameters.items():
+            plot_parameters[key] = kwargs.pop(key, value)
+    
+        # Set up the plot
+        fig, ax = plt.subplots(figsize=(plot_parameters['size_xy']))
+        # Throughline
+        ax.plot(all_indices, all_energies, color=plot_parameters['color'][0], ls='--', zorder=1)
+        # Points along the `STransition` path
+        ax.scatter(0, initial_structure, color=plot_parameters['color'][3], s=plot_parameters['size_of_marker'], marker='s',zorder=2, label='Initial structure')
+        ax.scatter(minima_indices[1:], minima_energies[1:], color=plot_parameters['color'][1], s=plot_parameters['size_of_marker'], zorder=2)
+        ax.scatter(saddlepoints_indices[:int(transition_index/2)], saddlepoints_energies[:int(transition_index/2)], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
+        ax.scatter(transition_index, transition_structure, color=plot_parameters['color'][4], s=plot_parameters['size_of_marker']+50, marker='p', zorder=2, label='Transition state')
+        ax.scatter(saddlepoints_indices[int(transition_index/2+1):], saddlepoints_energies[int(transition_index/2+1):], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
+    
+        # Threshold lines
+        ax.axhline(y=abs(self.delta_e_final_top), ls='dotted', color=plot_parameters['color'][5], zorder=0, label='Top/Bottom threshold')
+        ax.axhline(y=self.delta_e_final_initial, ls='dotted', color=plot_parameters['color'][5], zorder=0)
+        # Axes
+        ax.set_xlabel(plot_parameters['xlabel'], fontsize=plot_parameters['fontsize'])
+        ax.set_ylabel(plot_parameters['ylabel'], fontsize=plot_parameters['fontsize'])
+        ax.tick_params(direction='in', which='both', labelsize=plot_parameters['fontsize'])
+        ax.set_xticks(ticks=plot_parameters['xticks']) #which indices to plot along the axis
+    
+        if plot_parameters['legend']:
+            plt.legend(fontsize=plot_parameters['fontsize']-2)
+    
+        if plot_parameters['plot_title'] is not None:
+            plt.title(plot_parameters['plot_title'], fontsize=plot_parameters['fontsize'])
+    
+        # Plot additional info
+        if function is not None:
+            if function == 'basin_counters':
+                transition_property = self.basin_counters 
+                property_indices = minima_indices[:-1]
+    
+            if function == 'small_transition_energies':
+                transition_property = self.small_transition_energies 
+                property_indices = saddlepoints_indices
+    
+            for i, prop in enumerate(transition_property):
+                ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
+    
+        # Save if you wish to
+        if plot_parameters['save_as'] is not None:
+            fig.savefig(fname=f"{plot_parameters['plot_title'].lower()}.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
+    
+        plt.show()
+
+
 
 class STransitions():
 
@@ -776,7 +838,8 @@ class STransitions():
 
         # Initialize self.stransitions_properties dictionary
 
-        self.stransitions_properties = dict.fromkeys(self.stransitions.keys(), dict())
+        self.stransitions_properties = {key: {} for key in self.stransitions.keys()} 
+
 
     def get_stransition_property(self, calculation_label, stransition_property):
         """
@@ -827,119 +890,41 @@ class STransitions():
             self.get_stransition_property(calculation_label, 'displacements')
 
 
-def plot_stransition(self, function=None, **kwargs):
+    def filter_stransitions(self, training_set, additional_criteria=None, **acsf_kwargs):
+        """
+        Filters structures obtained by a batch of Sisyphus runs to create a new training set.
+        Descriptors for the old `training set` will be calculated if `training_set.descriptors==[]`.
+        """
 
-    '''
-    customizable parameters:
-        -
-    functions:
-        - `basin_counters` ... will additionally plot the number of times ARTn had to be restarted from each minimum
-        - `small_transition_energies` ... will additionally plot the height of each `small transition` along the STransition path 
-        - `displacement`
-    '''
+        # Initialize training set Structures object to self._training set
 
-    initial_structure = self.all_energies[0]
-    initial_structure -= initial_structure
+        self._training_set = training_set
 
-    transition_structure = np.max(self.all_energies)
-    transition_structure -= self.all_energies[0] 
+        # Initialize `self.training_flags` dictionary of form {calculation_label: flags},
+        # where `flags` is a list ['I', 'I', ... , 'I'] of length = # of transition structures
+        # ('I' stands for initialized)
 
-    minima_energies = self.minima_energies
-    minima_energies -= self.all_energies[0] 
+        self.training_flags = dict()
 
-    saddlepoints_energies = self.saddlepoints_energies
-    saddlepoints_energies -= self.all_energies[0] 
+        for calculation_label in self.stransitions.keys():
+            
+            no_of_structures = len(self.stransitions[calculation_label].transition_structures.structures)
+            initialize_list = ['I'] * no_of_structures
 
-    all_energies = self.all_energies 
-    all_energies -= self.all_energies[0] 
-    all_indices = range(len(all_energies))
+            self.training_flags[calculation_label] = initialize_list
 
-    transition_index, = np.where(all_energies == transition_structure)
-    transition_index = int(transition_index)
+        ##############################################
+        # Potential preprocessing (maximum displacement, etc.) 
+        # using additional_criteria goes here
+        ##############################################
 
-    minima_indices, saddlepoints_indices = [], []
-    for a in all_indices: minima_indices.append(a) if a%2 == 0 else saddlepoints_indices.append(a)
+        # Create descriptors for the training set
 
-    # Parameter_dict
-    default_parameters = {
-        'xlabel': None,
-        'ylabel': None,
-        'plot_title': None,
-        'size_xy': (float(10), float(7.5)),
-        'annotate_x': float(),
-        'annotate_y': float(),
-        'size_of_marker': float(65),
-        'fontsize': 15,
-        'color': [
-            'gray', #throughline
-            'cyan', #minima
-            'black',  #saddles
-            'limegreen', #initial
-            'blue',  #transition
-            'red' #thresholds
-            ],
-        'xticks': all_indices,
-        'legend': False,
-        'save_as': None
-        }
+        if (self._training_set.descriptors == []):
+            self._training_set.set_acsf_parameters(**acsf_kwargs)
+            self._training_set.calculate_descriptors()
 
-    for key in kwargs:
-        if key not in default_parameters:
-            raise RuntimeError('Unknown keyword: %s' % key)
 
-    plot_parameters = {}
-    for key, value in default_parameters.items():
-        plot_parameters[key] = kwargs.pop(key, value)
-
-    # Set up the plot
-    fig, ax = plt.subplots(figsize=(plot_parameters['size_xy']))
-    # Throughline
-    ax.plot(all_indices, all_energies, color=plot_parameters['color'][0], ls='--', zorder=1)
-    # Points along the `STransition` path
-    ax.scatter(0, initial_structure, color=plot_parameters['color'][3], s=plot_parameters['size_of_marker'], marker='s',zorder=2, label='Initial structure')
-    ax.scatter(minima_indices[1:], minima_energies[1:], color=plot_parameters['color'][1], s=plot_parameters['size_of_marker'], zorder=2)
-    ax.scatter(saddlepoints_indices[:int(transition_index/2)], saddlepoints_energies[:int(transition_index/2)], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
-    ax.scatter(transition_index, transition_structure, color=plot_parameters['color'][4], s=plot_parameters['size_of_marker']+50, marker='p', zorder=2, label='Transition state')
-    ax.scatter(saddlepoints_indices[int(transition_index/2+1):], saddlepoints_energies[int(transition_index/2+1):], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
-
-    # Threshold lines
-    ax.axhline(y=abs(self.delta_e_final_top), ls='dotted', color=plot_parameters['color'][5], zorder=0, label='Top/Bottom threshold')
-    ax.axhline(y=self.delta_e_final_initial, ls='dotted', color=plot_parameters['color'][5], zorder=0)
-    # Axes
-    ax.set_xlabel(plot_parameters['xlabel'], fontsize=plot_parameters['fontsize'])
-    ax.set_ylabel(plot_parameters['ylabel'], fontsize=plot_parameters['fontsize'])
-    ax.tick_params(direction='in', which='both', labelsize=plot_parameters['fontsize'])
-    ax.set_xticks(ticks=plot_parameters['xticks']) #which indices to plot along the axis
-
-    if plot_parameters['legend']:
-        plt.legend(fontsize=plot_parameters['fontsize']-2)
-
-    if plot_parameters['plot_title'] is not None:
-        plt.title(plot_parameters['plot_title'], fontsize=plot_parameters['fontsize'])
-
-    # Plot additional info
-    if function is not None:
-        if function == 'basin_counters':
-            transition_property = self.basin_counters 
-            property_indices = minima_indices[:-1]
-
-        if function == 'small_transition_energies':
-            transition_property = self.small_transition_energies 
-            property_indices = saddlepoints_indices
-
-        if function == 'maximum_displacement':
-            pass
-            #transition_property = [] 
-            #property_indices = minima_indices[1:]
-
-        for i, prop in enumerate(transition_property):
-            ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
-
-    # Save if you wish to
-    if plot_parameters['save_as'] is not None:
-        fig.savefig(fname=f"{plot_parameters['plot_title'].lower()}.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
-
-    plt.show()
 
 """
 Various helper functions start here
@@ -990,3 +975,225 @@ def calculate_displacement(atoms1, atoms2):
     return displacement_magnitude
 
 
+def compare_sets(reference_set, candidate_set, specorder=None, similarity_threshold=0.90, 
+        metric='laplacian', gamma=1, **acsf_kwargs):
+    """
+    Generates a dictionary containing info about the 
+    unique set of Structures from `candidate_set` w.r.t. `reference_set`.
+    `reference_set_structures` and `candidate_set_structures` must be instances of Structures class.
+
+    The algorithm proceeds as follows:
+    (1) If `*_set.descriptors==None`, calculate descriptors using `**acsf_kwargs`
+    (2) Divide `*_set* into groups by composition
+    (3) Find `reference_set` structures eliminating structures with a similarity > `threshold` w.r.t. `reference_set`
+    """
+
+    # (1) Get/calculate descriptors
+
+    if not candidate_set.descriptors:
+        candidate_set.set_acsf_parameters(**acsf_kwargs)
+        candidate_set.calculate_descriptors()
+
+    if not reference_set.descriptors:
+        reference_set.set_acsf_parameters(**acsf_kwargs)
+        reference_set.calculate_descriptors()
+
+    # (2) Divide sets into groups by composition
+
+    if not hasattr(candidate_set, 'structures_grouped_by_composition'):
+        candidate_set.group_by_composition(specorder=specorder)
+    if not hasattr(reference_set, 'structures_grouped_by_composition'):
+        reference_set.group_by_composition(specorder=specorder)
+
+    # initialize candidate vs. reference uniqueness report dictionary: 
+    # {(composition): {status_flags: [], maximum_similarity: [], index_of_max_similarity_reference_structure: []}}
+    # possible status_flags = 'I': initialized, 'U_C': unique by composition, 'U_D': unique by descriptor comparison , 'N_D': not unique by descriptor comparison
+
+    CR_dictionary = {composition: {
+        'CR_similarity': ['I'] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
+        'maximum_similarity': [0] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
+        'max_sim_R_index': [-1] * len(candidate_set.structures_grouped_by_composition[composition]['indices'])
+        } for composition in candidate_set.structures_grouped_by_composition.keys()}
+
+    # set descriptors to groups
+    
+    for composition in candidate_set.structures_grouped_by_composition.keys():
+        if not candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors:
+            indices = candidate_set.structures_grouped_by_composition[composition]['indices']
+            candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors = [candidate_set.descriptors[i] for i in indices]
+
+    for composition in reference_set.structures_grouped_by_composition.keys():
+        if not reference_set.structures_grouped_by_composition[composition]['structures'].descriptors:
+            indices = reference_set.structures_grouped_by_composition[composition]['indices']
+            reference_set.structures_grouped_by_composition[composition]['structures'].descriptors = [reference_set.descriptors[i] for i in indices]
+
+    # get common compositions
+
+    candidate_compositions, reference_compositions = candidate_set.structures_grouped_by_composition.keys(), reference_set.structures_grouped_by_composition.keys()
+    common_compositions = candidate_compositions & reference_compositions
+
+    # (3) Iterate over common compositions and calculate similarity between all candidate structures w.r.t. all reference structures
+
+    # if candidate composition not in reference, automatically set unique CR flags ('U_C' -> unique by composition)
+
+    for composition in candidate_compositions:
+        if composition not in reference_compositions:
+            CR_dictionary[composition]['CR_similarity'] = ['U_C'] * len(CR_dictionary[composition]['CR_similarity']) 
+
+    # iterate over common compositions, calculate similarity
+
+    average_kernel = AverageKernel(metric=metric, gamma=gamma) 
+
+    for composition in common_compositions:
+
+        candidate_descriptors = candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors
+        reference_descriptors = reference_set.structures_grouped_by_composition[composition]['structures'].descriptors
+
+        similarity_kernel = average_kernel.create(candidate_descriptors, reference_descriptors)
+
+        for candidate_index, similarity_list in enumerate(similarity_kernel):
+            
+            maximum_similarity = np.max(similarity_list)
+            max_sim_reference_index_in_kernel = np.argmax(similarity_list)
+
+            max_sim_reference_index = reference_set.structures_grouped_by_composition[composition]['indices'][max_sim_reference_index_in_kernel] 
+
+            if maximum_similarity > similarity_threshold:
+                CR_flag = 'N_D'
+            else:
+                CR_flag = 'U_D'
+
+            CR_dictionary[composition]['CR_similarity'][candidate_index] = CR_flag
+            CR_dictionary[composition]['maximum_similarity'][candidate_index] = maximum_similarity
+            CR_dictionary[composition]['max_sim_R_index'][candidate_index] = max_sim_reference_index
+
+    return CR_dictionary
+
+
+def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None, similarity_threshold=0.90, 
+        metric='laplacian', gamma=1, **acsf_kwargs):
+    """
+    Cluster `candidate_set` around structures with the maximum number of similar neighbors.
+    Returns `cluster_dictionary` listing the centers of clusters, etc... 
+    If `additional_flags_dictionary` is given, such as a `CR_dictionary`, will ignore structures with 'N_*' flags. Must be shaped as ``
+    """
+
+    # (1) Get/calculate descriptors
+
+    if not candidate_set.descriptors:
+        candidate_set.set_acsf_parameters(**acsf_kwargs)
+        candidate_set.calculate_descriptors()
+
+    # (2) Divide sets into groups by composition
+
+    if not hasattr(candidate_set, 'structures_grouped_by_composition'):
+        candidate_set.group_by_composition(specorder=specorder)
+ 
+    # set descriptors to groups
+
+    for composition in candidate_set.structures_grouped_by_composition.keys():
+        if not candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors:
+            indices = candidate_set.structures_grouped_by_composition[composition]['indices']
+            candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors = [candidate_set.descriptors[i] for i in indices]
+
+    # initialize cluster_dictionary
+
+    cluster_dictionary = {composition: {
+        'cluster_centers_indices': camus.utils.new_list(),
+        'cluster_neighbors_indices': camus.utils.new_list(),
+        'cluster_neighbors_similarities': camus.utils.new_list(),
+        'orphans_indices': camus.utils.new_list(),
+        'prefiltered_indices': camus.utils.new_list(),
+        'similarity_result_flags': ['I'] * len(candidate_set.structures_grouped_by_composition[composition]['indices'])
+        } for composition in candidate_set.structures_grouped_by_composition.keys()}
+
+    # (3) Calculate similarities between all structures
+
+    average_kernel = AverageKernel(metric=metric, gamma=gamma)
+
+    for composition in candidate_set.structures_grouped_by_composition.keys():
+
+        # get True, False list for indices not flagged with 'N_*'    
+        if additional_flags_dictionary:
+            additional_flags = additional_flags_dictionary[composition]['CR_similarity']
+            flags_boolean = [True if not flag.startswith('N_') else False for flag in additional_flags]
+
+        else:
+            flags_boolean = [True] * len(candidate_set.structures_grouped_by_composition[composition]['indices'])
+        
+        # indices of structures to be clustered
+        relevant_indices = [index for index, value in enumerate(flags_boolean) if value]
+        
+        # indices of structures flagged with 'N_*'
+        prefiltered_indices = [index for index, value in enumerate(flags_boolean) if not value]
+
+        # save original structure indices
+        original_structure_indices = [candidate_set.structures_grouped_by_composition[composition]['indices'][i]
+                for i in relevant_indices]
+
+        # get descriptors of structures to be clustered
+        relevant_descriptors = [candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors[i] 
+                for i in relevant_indices]
+
+        # save original prefiltered structures indices (those flagged with 'N_*')
+        prefiltered_structure_indices = [candidate_set.structures_grouped_by_composition[composition]['indices'][i]
+                for i in prefiltered_indices]
+
+        cluster_dictionary[composition]['prefiltered_indices'] = prefiltered_structure_indices
+
+        # flag prefiltered structures
+        for i in prefiltered_indices:
+            cluster_dictionary[composition]['similarity_result_flags'][i] = additional_flags[i]
+
+        # calculate similarity kernel
+        similarity_kernel = average_kernel.create(relevant_descriptors)
+
+        # neighbor counting loop
+        
+        orphans_structure_indices = original_structure_indices.copy()
+        mask = similarity_kernel > similarity_threshold
+        np.fill_diagonal(mask, False)
+
+        while not np.all(mask == False):
+
+            neighbor_counters = np.sum(mask, axis=1) 
+
+            maximum_counter_index = np.argmax(neighbor_counters)
+
+            # save center original index
+            center_original_index = original_structure_indices[maximum_counter_index]
+
+            # save neighbors indices and similarities
+            mask_true_indices = [index for index, value in enumerate(mask[maximum_counter_index]) if value]
+
+            neighbors_original_indices = [original_structure_indices[i] for i in mask_true_indices]
+            neighbors_similarities = similarity_kernel[maximum_counter_index][mask[maximum_counter_index]]
+
+            cluster_dictionary[composition]['cluster_centers_indices'].append(center_original_index)
+            cluster_dictionary[composition]['cluster_neighbors_indices'].append(neighbors_original_indices)
+            cluster_dictionary[composition]['cluster_neighbors_similarities'].append(neighbors_similarities)
+            cluster_dictionary[composition]['similarity_result_flags'][relevant_indices[maximum_counter_index]] = 'U_CTR'
+
+            for i in mask_true_indices:
+                cluster_dictionary[composition]['similarity_result_flags'][relevant_indices[i]] = 'U_NBR'
+
+            for i in range(len(mask)):
+
+                mask[i][maximum_counter_index] = False
+
+                for j in mask_true_indices:
+                    mask[i][j] = False
+
+            orphans_structure_indices = [index for index in orphans_structure_indices 
+                    if ((index not in neighbors_original_indices) and index != center_original_index)]
+
+
+        # save and flag orphans
+        cluster_dictionary[composition]['orphans_indices'] = orphans_structure_indices
+
+        orphans_indices = [relevant_indices[index] for index, value in enumerate(original_structure_indices) if value in set(orphans_structure_indices)]
+
+        for i in orphans_indices:
+            cluster_dictionary[composition]['similarity_result_flags'][i] = 'U_ORP'
+
+    return cluster_dictionary

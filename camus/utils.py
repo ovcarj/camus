@@ -1,4 +1,5 @@
 import pickle
+import copy
 import matplotlib.pyplot as plt
 
 # Utility functions to save and load pickle files
@@ -7,9 +8,11 @@ def save_to_pickle(object, path_to_file):
     with open(path_to_file, 'wb') as handle:
         pickle.dump(object, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+
 def load_pickle(path_to_file):
     with open(path_to_file, 'rb') as handle:
         return pickle.load(handle)
+
 
 def create_index_dict(input_list):
     """
@@ -26,6 +29,27 @@ def create_index_dict(input_list):
             index_dict[element].append(index)
             
     return index_dict
+
+
+def new_list():
+    """
+    Creates a new list.
+    """
+
+    new_list = list()
+
+    return copy.copy(new_list) 
+
+
+def new_dict():
+    """
+    Creates a new dictionary.
+    """
+
+    new_dict = dict()
+
+    return copy.copy(new_dict) 
+
 
 def create_plot(xlabel='x', ylabel='y', sizex=15.0, sizey=15.0, fontsize=15):
     """
