@@ -724,6 +724,254 @@ class STransition():
         energies = self.saddlepoints_energies - self.minima_energies[:len(self.saddlepoints_energies)]
         return energies
 
+    def plot_stransition(self, function=None, **kwargs):
+
+        '''
+        customizable parameters:
+            -
+        functions:
+            - `basin_counters` ... will additionally plot the number of times ARTn had to be restarted from each minimum
+            - `small_transition_energies` ... will additionally plot the height of each `small transition` along the STransition path 
+            - `displacement`
+        '''
+
+        initial_structure = self.all_energies[0]
+        initial_structure -= initial_structure
+
+        transition_structure = np.max(self.all_energies)
+        transition_structure -= self.all_energies[0] 
+
+        minima_energies = self.minima_energies
+        minima_energies -= self.all_energies[0] 
+
+        saddlepoints_energies = self.saddlepoints_energies
+        saddlepoints_energies -= self.all_energies[0] 
+
+        all_energies = self.all_energies 
+        all_energies -= self.all_energies[0] 
+        all_indices = range(len(all_energies))
+
+        transition_index, = np.where(all_energies == transition_structure)
+        transition_index = int(transition_index)
+
+        minima_indices, saddlepoints_indices = [], []
+        for a in all_indices: minima_indices.append(a) if a%2 == 0 else saddlepoints_indices.append(a)
+
+        # Parameter_dict
+        default_parameters = {
+            'xlabel': None,
+            'ylabel': None,
+            'plot_title': None,
+            'size_xy': (float(10), float(7.5)),
+            'annotate_x': float(),
+            'annotate_y': float(),
+            'size_of_marker': float(65),
+            'fontsize': 15,
+            'color': [
+                'gray', #throughline
+                'cyan', #minima
+                'black',  #saddles
+                'limegreen', #initial
+                'blue',  #transition
+                'red' #thresholds
+                ],
+            'xticks': all_indices,
+            'legend': False,
+            'save_as': None
+            }
+
+        for key in kwargs:
+            if key not in default_parameters:
+                raise RuntimeError('Unknown keyword: %s' % key)
+
+        plot_parameters = {}
+        for key, value in default_parameters.items():
+            plot_parameters[key] = kwargs.pop(key, value)
+
+        # Set up the plot
+        fig, ax = plt.subplots(figsize=(plot_parameters['size_xy']))
+        # Throughline
+        ax.plot(all_indices, all_energies, color=plot_parameters['color'][0], ls='--', zorder=1)
+        # Points along the `STransition` path
+        ax.scatter(0, initial_structure, color=plot_parameters['color'][3], s=plot_parameters['size_of_marker'], marker='s',zorder=2, label='Initial structure')
+        ax.scatter(minima_indices[1:], minima_energies[1:], color=plot_parameters['color'][1], s=plot_parameters['size_of_marker'], zorder=2)
+        ax.scatter(saddlepoints_indices[:int(transition_index/2)], saddlepoints_energies[:int(transition_index/2)], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
+        ax.scatter(transition_index, transition_structure, color=plot_parameters['color'][4], s=plot_parameters['size_of_marker']+50, marker='p', zorder=2, label='Transition state')
+        ax.scatter(saddlepoints_indices[int(transition_index/2+1):], saddlepoints_energies[int(transition_index/2+1):], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
+
+        # Threshold lines
+        ax.axhline(y=abs(self.delta_e_final_top), ls='dotted', color=plot_parameters['color'][5], zorder=0, label='Top/Bottom threshold')
+        ax.axhline(y=self.delta_e_final_initial, ls='dotted', color=plot_parameters['color'][5], zorder=0)
+        # Axes
+        ax.set_xlabel(plot_parameters['xlabel'], fontsize=plot_parameters['fontsize'])
+        ax.set_ylabel(plot_parameters['ylabel'], fontsize=plot_parameters['fontsize'])
+        ax.tick_params(direction='in', which='both', labelsize=plot_parameters['fontsize'])
+        ax.set_xticks(ticks=plot_parameters['xticks']) #which indices to plot along the axis
+
+        if plot_parameters['legend']:
+            plt.legend(fontsize=plot_parameters['fontsize']-2)
+
+        if plot_parameters['plot_title'] is not None:
+            plt.title(plot_parameters['plot_title'], fontsize=plot_parameters['fontsize'])
+
+        # Plot additional info
+        if function is not None:
+            if function == 'basin_counters':
+                transition_property = self.basin_counters 
+                property_indices = minima_indices[:-1]
+
+            if function == 'small_transition_energies':
+                transition_property = self.small_transition_energies 
+                property_indices = saddlepoints_indices
+
+            if function == 'maximum_displacement':
+                pass
+                #transition_property = [] 
+                #property_indices = minima_indices[1:]
+
+            for i, prop in enumerate(transition_property):
+                ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
+
+        # Save if you wish to
+        if plot_parameters['save_as'] is not None:
+            fig.savefig(fname=f"{plot_parameters['plot_title'].lower()}.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
+
+        plt.show()
+
+
+    def write_report(self, report_name=None, target_directory=None):
+
+        if report_name is not None:
+            report_name = report_name
+        else:
+            report_name = 'sisyphus.report'
+
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_SISYPHUS_ANALYSIS_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_SISYPHUS_ANALYSIS_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Intro & shameless plug
+        report_content = "#Sisyphus report file generated by...\n\n"
+        report_content += "\t CCCCC   AAAAA  MM   MM UU   UU  SSSSS \n"
+        report_content += "\tCCCCCCC AAAAAAA MMM MMM UU   UU SSSSSSS\n"
+        report_content += "\tCC      AA   AA MMMMMMM UU   UU SSS    \n"
+        report_content += "\tCC      AA   AA MMMMMMM UU   UU  SSSSS \n"
+        report_content += "\tCC      AAAAAAA MM M MM UU   UU     SSS\n"
+        report_content += "\tCCCCCCC AAAAAAA MM   MM UUUUUUU SSSSSSS\n"
+        report_content += "\t CCCCC  AA   AA MM   MM  UUUUU   SSSSS \n\n"
+
+        # Header
+        label = self.directory.strip().split('sis_')[-1]
+        no_of_structures = len(self.transition_structures.structures)
+        activation_e_forward = self.activation_e_forward
+        status = self.status
+        directory = self.directory
+        divider_line = '_' * 120
+
+        report_content += f"stransition_label: {label}\tno_of_structures: {no_of_structures}\tactivation_e_forward: {activation_e_forward}\tstatus: {status}\t\n\ndirectory: {directory}\n\n"
+        report_content += f"{divider_line}\n\n"
+
+        #Initial calculation parameters
+        report_content += "#Initial calculation parameters\n\n"
+
+        sisyphus_sh = os.path.join(directory, 'sisyphus.sh')
+        with open(sisyphus_sh) as s:
+            sisyphus_sh_lines = s.readlines()
+
+        initial_parameters = ['dE_initial', 'dE_initial_threshold', 'dE_final_threshold', 'delr_threshold', 'maximum_steps']
+        
+        for parameter in initial_parameters:
+            for line in sisyphus_sh_lines:
+                if parameter in line:
+                    result = line.split('=')[1].split('#')[0]
+                    report_content += f"{parameter}: {result}\n"
+                    break
+        
+        report_content += "\n"
+        # Specorder & composition
+        count = Counter(self.transition_structures.chemical_symbols[0])
+        specorder = ''
+        composition = ''
+
+        for key, value in count.items():
+            specorder += f"{key.strip()} "
+            composition += f"{key.strip()}{value}"
+
+        report_content += f"specorder: {specorder}\ncomposition: {composition}\n\n"
+
+        # Potential used
+        lammps_in = os.path.join(directory, 'lammps.in')
+        temp_lammps_in = os.path.join('/storage/MATULA_STORAGE/sisyphus_4/base_sis_1/sis_0_0_0_0/', 'lammps.in')
+
+        with open(temp_lammps_in) as l:
+            lammps_lines = l.readlines()
+
+        for line in lammps_lines:
+            if 'pair_coeff' in line:
+                potential = line.split('* * ')[1].split()[0]
+                report_content += f"potential: {potential}\n\n"
+        
+        report_content += f"{divider_line}\n\n"
+
+        # Results
+        report_content += "#Resutls of the run\n\n"
+
+        delta_e_final_initial = self.delta_e_final_initial
+        delta_e_final_top = self.delta_e_final_top
+
+        report_content += f"delta_e_final_initial/top: {delta_e_final_initial}\t{delta_e_final_top}\n\n"
+ 
+        # Displacements
+        report_content += "average/maximum displacement:\n"
+        report_content += f"{'species' : <20}{'disp_avg' : <8}{'disp_max' : ^35}{'str_idx' : ^5}\n"
+        for species in count.keys():
+            disp_max = self.transition_structures.maximum_displacement_all_structures[species]['maximum_displacement']
+            str_idx = self.transition_structures.maximum_displacement_all_structures[species]['structure_index']
+            disp_avg = self.transition_structures.average_displacement_per_type[species][str_idx]
+
+            report_content += f"{species : ^10}{disp_avg : ^25}{disp_max : ^22}{str_idx : >10}\n"
+
+        report_content += "\n-------STRUCTURES-------\n\n"
+
+        # Structures
+        report_content += f"{'structure_no': <20}{'type' : <8}{'energy' : ^35}{'STE' : ^5}{'basin_count' : >20}\n"
+
+        str_type = ['I']
+        while len(str_type) < no_of_structures:
+            str_type.append('S')
+            str_type.append('M')
+
+        top_energy = np.max(self.all_energies)
+        top_index = int(np.where(self.all_energies == top_energy)[0])
+        str_type[top_index] = 'T'
+
+        small_trans_energies = []
+        for energy in [round(e,5) for e in self.small_transition_energies]:
+            small_trans_energies.append('-')
+            small_trans_energies.append(energy)
+        while len(small_trans_energies) < no_of_structures:
+            small_trans_energies.append('-')
+
+        basins = list(self.basin_counters)
+        basin_count = []
+        for basin in basins:
+            basin_count.append(int(basin))
+            basin_count.append('-')
+        while len(basin_count) < no_of_structures:
+            basin_count.append('-')
+
+        for i in range(no_of_structures):
+            report_content += f"{i : ^10} {str_type[i] : ^22} {round(self.all_energies[i],5) : ^20} {small_trans_energies[i] : ^20} {basin_count[i] : >5}\n"
+
+        # Write it down
+        with open(os.path.join(target_directory, report_name), 'w') as r:
+            r.write(report_content)
+
 
 class STransitions():
 
@@ -776,7 +1024,8 @@ class STransitions():
 
         # Initialize self.stransitions_properties dictionary
 
-        self.stransitions_properties = dict.fromkeys(self.stransitions.keys(), dict())
+        self.stransitions_properties = {key: {} for key in self.stransitions.keys()} 
+
 
     def get_stransition_property(self, calculation_label, stransition_property):
         """
@@ -827,119 +1076,114 @@ class STransitions():
             self.get_stransition_property(calculation_label, 'displacements')
 
 
-def plot_stransition(self, function=None, **kwargs):
+    def get_maximum_displacement_properties(self, structure_type='minima'):
 
-    '''
-    customizable parameters:
-        -
-    functions:
-        - `basin_counters` ... will additionally plot the number of times ARTn had to be restarted from each minimum
-        - `small_transition_energies` ... will additionally plot the height of each `small transition` along the STransition path 
-        - `displacement`
-    '''
+        """
+        structure_type = 'minima' or 'saddlepoints' or 'transition'
+        """
 
-    initial_structure = self.all_energies[0]
-    initial_structure -= initial_structure
+        if not any(self.stransitions_properties.values()):
+            self.get_all_properties()
 
-    transition_structure = np.max(self.all_energies)
-    transition_structure -= self.all_energies[0] 
+        maximum_displacement_all_structures_properties = [self.stransitions_properties[key][f'{structure_type}_maximum_displacement_all_structures'] for key in self.stransitions.keys()]
+        
+        average_displacement_at_maximum = [self.stransitions_properties[key][f'{structure_type}_average_displacement_per_type'] for key in self.stransitions.keys()]
 
-    minima_energies = self.minima_energies
-    minima_energies -= self.all_energies[0] 
+        chemical_species = self.stransitions_properties[list(self.stransitions.keys())[0]][f'{structure_type}_maximum_displacement_all_structures'].keys() 
+       
+        return maximum_displacement_all_structures_properties, average_displacement_at_maximum, chemical_species
 
-    saddlepoints_energies = self.saddlepoints_energies
-    saddlepoints_energies -= self.all_energies[0] 
 
-    all_energies = self.all_energies 
-    all_energies -= self.all_energies[0] 
-    all_indices = range(len(all_energies))
+    def plot_maximum_displacement(self, structure_type='minima', savefig=False, dpi=450, fname = 'max_displacement', save_format='pdf', return_fig_ax=False):
 
-    transition_index, = np.where(all_energies == transition_structure)
-    transition_index = int(transition_index)
+        maximum_displacement_all_structures_properties, average_displacement_at_maximum, chemical_species = self.get_maximum_displacement_properties(structure_type=structure_type)
 
-    minima_indices, saddlepoints_indices = [], []
-    for a in all_indices: minima_indices.append(a) if a%2 == 0 else saddlepoints_indices.append(a)
+        no_of_properties = len(maximum_displacement_all_structures_properties)
+        property_indices = np.arange(0, no_of_properties, 1)
+   
+        fig, ax = camus.utils.create_plot(xlabel='', ylabel=r'Displacement $(\AA)$', fontsize=18)
 
-    # Parameter_dict
-    default_parameters = {
-        'xlabel': None,
-        'ylabel': None,
-        'plot_title': None,
-        'size_xy': (float(10), float(7.5)),
-        'annotate_x': float(),
-        'annotate_y': float(),
-        'size_of_marker': float(65),
-        'fontsize': 15,
-        'color': [
-            'gray', #throughline
-            'cyan', #minima
-            'black',  #saddles
-            'limegreen', #initial
-            'blue',  #transition
-            'red' #thresholds
-            ],
-        'xticks': all_indices,
-        'legend': False,
-        'save_as': None
-        }
+        total_width = 0.75
+        width = total_width / no_of_properties
 
-    for key in kwargs:
-        if key not in default_parameters:
-            raise RuntimeError('Unknown keyword: %s' % key)
+        for i, species in enumerate(chemical_species):
 
-    plot_parameters = {}
-    for key, value in default_parameters.items():
-        plot_parameters[key] = kwargs.pop(key, value)
+            for j, index in enumerate(property_indices):
 
-    # Set up the plot
-    fig, ax = plt.subplots(figsize=(plot_parameters['size_xy']))
-    # Throughline
-    ax.plot(all_indices, all_energies, color=plot_parameters['color'][0], ls='--', zorder=1)
-    # Points along the `STransition` path
-    ax.scatter(0, initial_structure, color=plot_parameters['color'][3], s=plot_parameters['size_of_marker'], marker='s',zorder=2, label='Initial structure')
-    ax.scatter(minima_indices[1:], minima_energies[1:], color=plot_parameters['color'][1], s=plot_parameters['size_of_marker'], zorder=2)
-    ax.scatter(saddlepoints_indices[:int(transition_index/2)], saddlepoints_energies[:int(transition_index/2)], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
-    ax.scatter(transition_index, transition_structure, color=plot_parameters['color'][4], s=plot_parameters['size_of_marker']+50, marker='p', zorder=2, label='Transition state')
-    ax.scatter(saddlepoints_indices[int(transition_index/2+1):], saddlepoints_energies[int(transition_index/2+1):], color=plot_parameters['color'][2], s=plot_parameters['size_of_marker'], zorder=2)
+                x = i + 1 + total_width * (j / no_of_properties - 0.5)
 
-    # Threshold lines
-    ax.axhline(y=abs(self.delta_e_final_top), ls='dotted', color=plot_parameters['color'][5], zorder=0, label='Top/Bottom threshold')
-    ax.axhline(y=self.delta_e_final_initial, ls='dotted', color=plot_parameters['color'][5], zorder=0)
-    # Axes
-    ax.set_xlabel(plot_parameters['xlabel'], fontsize=plot_parameters['fontsize'])
-    ax.set_ylabel(plot_parameters['ylabel'], fontsize=plot_parameters['fontsize'])
-    ax.tick_params(direction='in', which='both', labelsize=plot_parameters['fontsize'])
-    ax.set_xticks(ticks=plot_parameters['xticks']) #which indices to plot along the axis
+                color1 = 'royalblue'
+                color2 = 'salmon'
+                
+                maximum_displacement = maximum_displacement_all_structures_properties[index][species]
+                average_displacement = average_displacement_at_maximum[index][species]
 
-    if plot_parameters['legend']:
-        plt.legend(fontsize=plot_parameters['fontsize']-2)
+                bar_max = ax.bar(x, maximum_displacement['maximum_displacement'], width=width, color=color1, align='edge', edgecolor='black', linewidth=0.7, label='Maximum displacement')
+                bar_avg = ax.bar(x, average_displacement[maximum_displacement['structure_index']], width=width, color=color2, align='edge', edgecolor='black', linewidth=0.7, label='Average displacement')
 
-    if plot_parameters['plot_title'] is not None:
-        plt.title(plot_parameters['plot_title'], fontsize=plot_parameters['fontsize'])
+        xticks = list(chemical_species)
+        plt.xticks(np.arange(1, len(xticks) + 1), xticks, fontsize=18)
+        ax.minorticks_on()
+        ax.tick_params(axis='y', direction='in', which='both', labelsize=15, length=8)
+        ax.tick_params(axis='y', which='minor', length=4)
+        ax.tick_params(axis='x', which='both', bottom=False)
 
-    # Plot additional info
-    if function is not None:
-        if function == 'basin_counters':
-            transition_property = self.basin_counters 
-            property_indices = minima_indices[:-1]
+        ax.legend(handles=[bar_max, bar_avg], loc='best', fontsize=15)
 
-        if function == 'small_transition_energies':
-            transition_property = self.small_transition_energies 
-            property_indices = saddlepoints_indices
+        # Save plot
 
-        if function == 'maximum_displacement':
-            pass
-            #transition_property = [] 
-            #property_indices = minima_indices[1:]
+        if savefig == False:
+            plt.show()
+        elif savefig == True:
+            plt.savefig(fname=fname + '.' + save_format, format=save_format, bbox_inches='tight', dpi=dpi)
 
-        for i, prop in enumerate(transition_property):
-            ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
+        if return_fig_ax:
+            return fig, ax
 
-    # Save if you wish to
-    if plot_parameters['save_as'] is not None:
-        fig.savefig(fname=f"{plot_parameters['plot_title'].lower()}.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
 
-    plt.show()
+    def plot_energy_v_displacement(self, chemical_species = None, savefig=False, dpi=450, fname = 'energy_v_displacement', save_format='pdf', return_fig_ax=False):
+
+        if chemical_species is not None:
+            chemical_species = chemical_species
+            maximum_displacement_all_structures_properties = self.get_maximum_displacement_properties(structure_type='saddlepoints')[0]
+        else:
+            maximum_displacement_all_structures_properties, _, chemical_species = self.get_maximum_displacement_properties(structure_type='saddlepoints')
+
+
+        species_colors = ['midnightblue', 'firebrick', 'limegreen', 'gold']
+        
+        fig, ax = camus.utils.create_plot(xlabel=r'Displacement $(\AA)$', ylabel='Energy (eV)', fontsize=18)
+
+        for i, species in enumerate(chemical_species):
+            
+            for index, key in enumerate(self.stransitions.keys()):
+        
+                top_energy = np.max(self.stransitions_properties[key]['all_energies'])
+                top_index = int(np.where(self.stransitions_properties[key]['all_energies'] == top_energy)[0])
+
+                maximum_displacement = maximum_displacement_all_structures_properties[index][species]
+                structure_index = maximum_displacement['structure_index']
+
+                if structure_index < top_index:
+                    energy = self.stransitions_properties[key]['all_energies'][structure_index] - self.stransitions_properties[key]['all_energies'][0]
+                else:
+                    energy = self.stransitions_properties[key]['activation_e_forward']
+                scatter = ax.scatter(energy, maximum_displacement['maximum_displacement'], color=species_colors[i], edgecolor='black', linewidth=0.7, alpha=0.8, s=75, label=f'{species}')
+
+        legend_handles = [plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markeredgecolor='black', markersize=10, label=label) for color, label in zip(species_colors, chemical_species)]
+        ax.legend(handles=legend_handles, labels=list(chemical_species), loc='best', fontsize=15)
+
+        # Save plot
+
+        if savefig == False:
+            plt.show()
+        elif savefig == True:
+            plt.savefig(fname=fname + '.' + save_format, format=save_format, bbox_inches='tight', dpi=dpi)
+
+        if return_fig_ax:
+            return fig, ax
+
+
 
 """
 Various helper functions start here
