@@ -26,6 +26,8 @@ from dscribe.kernels import AverageKernel
 
 from collections import Counter
 
+import warnings
+
 class Structures:
 
     def __init__(self, structures=None, training_set=None, validation_set=None, test_set=None, 
@@ -85,7 +87,10 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             self.acsf_parameters = acsf_parameters
         else:
             self.acsf_parameters = {}
-            
+        
+        ###
+        self.self_energies = {}
+        
     @cached_property
     def chemical_symbols(self):
         """ Creates a list of chemical symbols for each structure in the
@@ -109,10 +114,11 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         """
         default_parameters= {
             'rcut': 6.0,
-            'g2_params': [(1, 2), (1, 4)], #[(1, 2), (1, 4), (1, 8),(1,16)],
+            'g2_params': [(1, 2), (1, 4), (1, 8),(1,16)], #[(1, 2), (1, 4)],
             'g3_params': [1,2],
-            'g4_params': [(1, 2, 1), (1, 4, 1)], #[(1, 4, 4), (1, 4, -1), (1, 8, 4), (1, 8, -1)],
+            'g4_params': [(1, 4, 4), (1, 4, -1), (1, 8, 4), (1, 8, -1)],#[(1, 2, 1), (1, 4, 1)], 
             'species': ['Cs', 'Pb', 'Br', 'I'],
+            'sparse': False,
             'periodic': True
             }
 
@@ -124,7 +130,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         for key, value in default_parameters.items():
             self.acsf_parameters[key] = kwargs.pop(key, value)
 
-    def calculate_descriptors(self, input_structures=None):
+    def calculate_descriptors(self, input_structures=None, positions=None, n_jobs=1):
 
         if input_structures is None:
             input_structures = self.structures
@@ -139,16 +145,17 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             g3_params=self.acsf_parameters['g3_params'],
             g4_params=self.acsf_parameters['g4_params'],
             species=self.acsf_parameters['species'],
+            sparse=self.acsf_parameters['sparse'],
             periodic=self.acsf_parameters['periodic']
             )
 
         # Special case of single input structure:
-        if isinstance(input_structures, Atoms): input_structures = [input_structures]
+        #if isinstance(input_structures, Atoms): input_structures = [input_structures]
 
-        for atoms in input_structures:
-            descriptor = acsf_descriptor.create(atoms)
-            self.descriptors.append(descriptor)
-
+        #for atoms in input_structures:
+        #    descriptor = acsf_descriptor.create(atoms)
+        #    self.descriptors.append(descriptor)
+        self.descriptors = acsf_descriptor.create(input_structures, positions=positions, n_jobs=n_jobs)
 
 
     def group_by_composition(self, input_structures=None, specorder=None):
@@ -613,6 +620,104 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
     maximum_displacements_per_type = cached_property(get_maximum_displacements_per_type)
     maximum_displacement_all_structures = cached_property(get_maximum_displacement_all_structures)
 
+    ###
+
+    def calculate_self_energies(self, input_structures=None, specorder=None):
+
+        if input_structures is None:
+            input_structures = self.structures
+
+        # The fit needs enough structures to be considered `good`
+        if isinstance(input_structures, Atoms):
+            raise RuntimeError('You cannot fit on just one structure')
+        elif len(input_structures) < 100:
+            warnings.warn(f'{len(input_structures)} might not be enough structures to produce good fit.\n Condsider increasing the size of your dataset.', FutureWarning)
+        else:
+            pass
+
+        # If `specorder` not given assume the specorder from the first structure in `input_structures`
+        if specorder is not None:
+            specorder = specorder
+        else:
+            specorder = []
+            for species in input_structures[0].get_chemical_symbols(): 
+                if species not in specorder:
+                    specorder.append(species)
+
+        chemical_species_counter = {species: [] for species in specorder}
+
+        # Count the number of atoms of each species in the `input_structures`
+        for i, structure in enumerate(input_structures):
+
+            chemical_species = structure.get_chemical_symbols()
+            count = Counter()
+
+            for species in chemical_species:
+                count[species] += 1
+
+            for species, count in count.items():
+                chemical_species_counter[species].append(count)
+
+            # If given species is not present in the specific structure add count of zero
+            for species in chemical_species_counter:
+                if len(chemical_species_counter[species]) != i + 1:
+                    chemical_species_counter[species].append(0)
+
+        # The total number of atoms of each species in the `input_structures`
+        no_per_species = [chemical_species_counter[species] for species in specorder]
+        no_per_species.append([1] * (len(input_structures)))  # Corrected line 
+        no_per_species = np.array(no_per_species).transpose()
+
+        # Get energy for each structure 
+        energy = [structure.get_potential_energy() for structure in input_structures]
+        energy = np.array(energy)
+
+        # Least square fit
+        lstsq_solution, _, _, _ = np.linalg.lstsq(no_per_species, energy, rcond=None)
+        interaction_energy = lstsq_solution[-1] # if it's even useful to us
+
+        # Create `self_energies` dictionary for comprehensive output
+        #self.self_energies = {}
+        for species, energy in zip(specorder, lstsq_solution[:-1]):
+            self.self_energies[species] = energy
+
+    def energy_correction(self, input_structures=None, specorder=None):
+
+        if input_structures is None:
+            input_structures = self.structures
+
+        # If `specorder` not given assume the specorder from the first structure in `input_structures`
+        if specorder is not None:
+            specorder = specorder
+        else:
+            specorder = []
+            for species in input_structures[0].get_chemical_symbols():
+                if species not in specorder:
+                    specorder.append(species)
+
+        # Calculate self energies if you haven't before but in this case `input_structures` can't be  only one structure
+        if not self.self_energies:
+            self.calculate_self_energies()
+        
+        # Special case of single input structure:
+        if isinstance(input_structures, Atoms): input_structures = [input_structures]
+        
+        corrected_energies = []
+        for structure in input_structures:
+           
+            chemical_species = structure.get_chemical_symbols()
+            count = Counter()
+
+            for species in chemical_species:
+                count[species] += 1
+
+            corrected_energy = structure.get_potential_energy()
+            for species in specorder:
+                corrected_energy -= count[species] * self.self_energies[species]
+            corrected_energies.append(corrected_energy)
+
+        return np.array(corrected_energies)
+
 
 class STransition():
 
@@ -707,29 +812,7 @@ class STransition():
     
         minima_indices, saddlepoints_indices = [], []
         for a in all_indices: minima_indices.append(a) if a%2 == 0 else saddlepoints_indices.append(a)
-    
-        initial_structure = self.all_energies[0]
-        initial_structure -= initial_structure
-
-        transition_structure = np.max(self.all_energies)
-        transition_structure -= self.all_energies[0] 
-
-        minima_energies = self.minima_energies
-        minima_energies -= self.all_energies[0] 
-
-        saddlepoints_energies = self.saddlepoints_energies
-        saddlepoints_energies -= self.all_energies[0] 
-
-        all_energies = self.all_energies 
-        all_energies -= self.all_energies[0] 
-        all_indices = range(len(all_energies))
-
-        transition_index, = np.where(all_energies == transition_structure)
-        transition_index = int(transition_index)
-
-        minima_indices, saddlepoints_indices = [], []
-        for a in all_indices: minima_indices.append(a) if a%2 == 0 else saddlepoints_indices.append(a)
-
+        
         # Parameter_dict
         default_parameters = {
             'xlabel': None,
@@ -761,14 +844,6 @@ class STransition():
         for key, value in default_parameters.items():
             plot_parameters[key] = kwargs.pop(key, value)
     
-        for key in kwargs:
-            if key not in default_parameters:
-                raise RuntimeError('Unknown keyword: %s' % key)
-
-        plot_parameters = {}
-        for key, value in default_parameters.items():
-            plot_parameters[key] = kwargs.pop(key, value)
-
         # Set up the plot
         fig, ax = plt.subplots(figsize=(plot_parameters['size_xy']))
         # Throughline
@@ -796,9 +871,6 @@ class STransition():
         if plot_parameters['plot_title'] is not None:
             plt.title(plot_parameters['plot_title'], fontsize=plot_parameters['fontsize'])
 
-        if plot_parameters['legend']:
-            plt.legend(fontsize=plot_parameters['fontsize']-2)
-
         if plot_parameters['plot_title'] is not None:
             plt.title(plot_parameters['plot_title'], fontsize=plot_parameters['fontsize'])
 
@@ -817,27 +889,8 @@ class STransition():
     
         # Save if you wish to
         if plot_parameters['save_as'] is not None:
-            fig.savefig(fname=f"{plot_parameters['plot_title'].lower()}.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
+            fig.savefig(fname=f"sisplot.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
     
-        plt.show()
-
-
-        if function == 'small_transition_energies':
-            transition_property = self.small_transition_energies 
-            property_indices = saddlepoints_indices
-
-        if function == 'maximum_displacement':
-            pass
-                #transition_property = [] 
-                #property_indices = minima_indices[1:]
-
-        for i, prop in enumerate(transition_property):
-            ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
-
-        # Save if you wish to
-        if plot_parameters['save_as'] is not None:
-            fig.savefig(fname=f"{plot_parameters['plot_title'].lower()}.{plot_parameters['save_as']}", bbox_inches='tight', format=plot_parameters['save_as'])
-
         plt.show()
 
 
@@ -881,20 +934,11 @@ class STransition():
         #Initial calculation parameters
         report_content += "#Initial calculation parameters\n\n"
 
-        sisyphus_sh = os.path.join(directory, 'sisyphus.sh')
-        with open(sisyphus_sh) as s:
-            sisyphus_sh_lines = s.readlines()
-
-        initial_parameters = ['dE_initial', 'dE_initial_threshold', 'dE_final_threshold', 'delr_threshold', 'maximum_steps']
-        
-        for parameter in initial_parameters:
-            for line in sisyphus_sh_lines:
-                if parameter in line:
-                    result = line.split('=')[1].split('#')[0]
-                    report_content += f"{parameter}: {result}\n"
-                    break
+        for key, value in self.initial_parameters.items():
+            report_content += f"{key}: {value}\n"
         
         report_content += "\n"
+        
         # Specorder & composition
         count = Counter(self.transition_structures.chemical_symbols[0])
         specorder = ''
@@ -907,16 +951,7 @@ class STransition():
         report_content += f"specorder: {specorder}\ncomposition: {composition}\n\n"
 
         # Potential used
-        lammps_in = os.path.join(directory, 'lammps.in')
-        temp_lammps_in = os.path.join('/storage/MATULA_STORAGE/sisyphus_4/base_sis_1/sis_0_0_0_0/', 'lammps.in')
-
-        with open(temp_lammps_in) as l:
-            lammps_lines = l.readlines()
-
-        for line in lammps_lines:
-            if 'pair_coeff' in line:
-                potential = line.split('* * ')[1].split()[0]
-                report_content += f"potential: {potential}\n\n"
+        report_content += f"potential: {self.potential}\n\n"
         
         report_content += f"{divider_line}\n\n"
 
@@ -1565,7 +1600,7 @@ def compare_sets(reference_set, candidate_set, specorder=None, similarity_thresh
 
 
 def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None, similarity_threshold=0.90, 
-        metric='laplacian', gamma=1, **acsf_kwargs):
+        metric='laplacian', gamma=1, n_jobs=1, positions=None, **acsf_kwargs):
     """
     Cluster `candidate_set` around structures with the maximum number of similar neighbors.
     Returns `cluster_dictionary` listing the centers of clusters, etc... 
@@ -1576,7 +1611,7 @@ def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None,
 
     if not candidate_set.descriptors:
         candidate_set.set_acsf_parameters(**acsf_kwargs)
-        candidate_set.calculate_descriptors()
+        candidate_set.calculate_descriptors(n_jobs=n_jobs, positions=positions)
 
     # (2) Divide sets into groups by composition
 
