@@ -321,11 +321,40 @@ class Camus:
                 self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_energies'] = None
                 self.sisyphus_dictionary[f'{calculation_label}']['basin_counters'] = None
                 self.sisyphus_dictionary[f'{calculation_label}']['directory'] = None
+                self.sisyphus_dictionary[f'{calculation_label}']['initial_parameters'] = {}
+                self.sisyphus_dictionary[f'{calculation_label}']['potential'] = None
 
                 directory = job_info['directory']
                 self.sisyphus_dictionary[f'{calculation_label}']['directory'] = directory
 
                 os.chdir(directory)
+
+                # Get initial paramaters of sisyphus run in `directory` from the sisyphus.sh
+                sisyphus_sh_file = os.path.join(directory, 'sisyphus.sh')
+
+                with open(sisyphus_sh_file) as s:
+                    sisyphus_sh_lines = s.readlines()
+
+                initial_parameters = ['dE_initial', 'dE_initial_threshold', 'dE_final_threshold', 'delr_threshold', 'maximum_steps']
+
+                for parameter in initial_parameters:
+                    for line in sisyphus_sh_lines:
+                        if parameter in line:
+                            result = line.split('=')[1].split('#')[0].strip()
+                            self.sisyphus_dictionary[f'{calculation_label}']['initial_parameters'][parameter] = result             
+                            break # Find the first occurence and end the search there
+
+                # Potential used
+                lammps_in_file = os.path.join(directory, 'lammps.in')
+
+                with open(lammps_in_file) as l:
+                    lammps_in_lines = l.readlines()
+
+                for line in lammps_in_lines:
+                    if 'pair_coeff' in line:
+                        potential = line.split('* * ')[1].split()[0]
+                        self.sisyphus_dictionary[f'{calculation_label}']['potential'] = potential
+                        break
 
                 sisyphus_log_file = os.path.join(directory, f'{prefix}_{calculation_label}_SISYPHUS.log')
 
