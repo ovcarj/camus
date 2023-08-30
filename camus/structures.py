@@ -822,17 +822,17 @@ class STransition():
         plt.show()
 
 
-            if function == 'small_transition_energies':
-                transition_property = self.small_transition_energies 
-                property_indices = saddlepoints_indices
+        if function == 'small_transition_energies':
+            transition_property = self.small_transition_energies 
+            property_indices = saddlepoints_indices
 
-            if function == 'maximum_displacement':
-                pass
+        if function == 'maximum_displacement':
+            pass
                 #transition_property = [] 
                 #property_indices = minima_indices[1:]
 
-            for i, prop in enumerate(transition_property):
-                ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
+        for i, prop in enumerate(transition_property):
+            ax.annotate(prop, (property_indices[i], all_energies[property_indices[i]]), xytext=(property_indices[i] + plot_parameters['annotate_x'], all_energies[property_indices[i]] + plot_parameters['annotate_y']), size = plot_parameters['fontsize']-3)
 
         # Save if you wish to
         if plot_parameters['save_as'] is not None:
@@ -1077,40 +1077,240 @@ class STransitions():
             self.get_stransition_property(calculation_label, 'displacements')
 
 
-    def filter_stransitions(self, training_set, additional_criteria=None, **acsf_kwargs):
+    def map_stransitions(self, structure_type='transition'):
         """
-        Filters structures obtained by a batch of Sisyphus runs to create a new training set.
-        Descriptors for the old `training set` will be calculated if `training_set.descriptors==[]`.
+        Concatenates all self.stransitions[*calc_label*].`structure_type`_structures into
+        a single self.concatenated_structures object.
+        Creates a dictionary {calc_label: [indices in self.concatenated_stransitions]} to self.concatenated_map.
+        Creates the inverse dictionary {index in self.concatenated_stransition: calc_label} for convenience to self.inverse_map.
+        
+        `structure_type` can be ['transition', 'minima', 'saddlepoints'].
         """
 
-        # Initialize training set Structures object to self._training set
+        structures_type = f'{structure_type}_structures'
+        concatenated_structures = []
+        calculation_labels = self.stransitions.keys()
 
-        self._training_set = training_set
+        self.concatenated_map = {calculation_label: camus.utils.new_list for calculation_label in calculation_labels}
+        self.inverse_map = camus.utils.new_dict()
 
-        # Initialize `self.training_flags` dictionary of form {calculation_label: flags},
-        # where `flags` is a list ['I', 'I', ... , 'I'] of length = # of transition structures
-        # ('I' stands for initialized)
+        structure_counter = 0
+        
+        for calculation_label in calculation_labels:
 
-        self.training_flags = dict()
+            structures = self.stransitions[calculation_label].__getattribute__(structures_type).structures
+            no_of_structures = len(structures)
 
-        for calculation_label in self.stransitions.keys():
+            indices = np.arange(structure_counter, structure_counter + no_of_structures)
+            self.concatenated_map[calculation_label] = indices
+            structure_counter += no_of_structures
+
+            for original_index, new_index in enumerate(indices):
+
+                self.inverse_map[new_index]= {'calculation_label': calculation_label, 'original_index': original_index}
+
+            concatenated_structures.append(structures)
+
+        concatenated_structures_flat = [item for sublist in concatenated_structures for item in sublist]
+
+        self.concatenated_structures = Structures(concatenated_structures_flat)
+
+
+    def prefilter_stransitions(self, criteria=None, structure_type='transition'):
+        """
+        Placeholder for a method which could possibly preprocess STransitions before it goes to 
+        structure comparisons.
+        Returns a dictionary {calc_label: flags, ...} which should indicate if some structures
+        should be skipped.
+
+        Maybe we could put prefiltered structures into self.prefiltered_stransitions 
+        and then use structure_type arguments in map_stransitions and comparisons? 
+        Of course, we have to take care that indices are correctly mapped...
+
+        Flags: ['I', 'F_*'] -> if F_*, structure will be ignored
+        """
+
+        structures_type = f'{structure_type}_structures'
+
+        if criteria is None:
+            self.prefilter_dictionary = {calculation_label: ['I'] * len(self.stransitions[calculation_label].__getattribute__(structures_type).structures)
+                    for calculation_label in self.stransitions.keys()}
+
+    
+    def compare_to_reference(self, reference_set, structure_type='transition', specorder=None, similarity_threshold=0.90,
+            metric='laplacian', gamma=1, **ascf_kwargs):
+        """
+        Creates self._CR_dictionary_composition for self.concatenated_structures and a reference set.
+        Also transforms the dictionary to self._CR_dictionary_stransitions of the form {calculation_label: data}.
+
+        `reference_set` must be a Structures object.
+        """
+
+        structures_type = f'{structure_type}_structures'
+
+        if not hasattr(self, 'concatenated_map'):
+            self.map_stransitions(structure_type=structure_type)
+
+        self._CR_dictionary_composition = compare_sets(reference_set=reference_set, candidate_set=self.concatenated_structures, specorder=specorder, 
+                similarity_threshold=similarity_threshold, metric=metric, gamma=gamma, **ascf_kwargs)
+
+        # Transform the self._CR_dictionary_composition dictionary to {calc_label: data} format
+
+        self._CR_dictionary_stransitions = {calculation_label: {
+            'CR_similarity': ['I'] * len(self.concatenated_map[calculation_label]),
+            'maximum_similarity': [0.0] * len(self.concatenated_map[calculation_label]),
+            'max_sim_R_index': [-1] * len(self.concatenated_map[calculation_label])
+            } 
+                for calculation_label in self.concatenated_map.keys()} 
+
+        for composition in self._CR_dictionary_composition:
+
+            for i, index in enumerate(self.concatenated_structures.structures_grouped_by_composition[composition]['indices']):
+
+                calculation_label = self.inverse_map[index]['calculation_label']
+                original_index = self.inverse_map[index]['original_index']
+
+                CR_similarity = self._CR_dictionary_composition[composition]['CR_similarity'][i]
+                maximum_similarity = self._CR_dictionary_composition[composition]['maximum_similarity'][i]
+                max_sim_R_index= self._CR_dictionary_composition[composition]['max_sim_R_index'][i]
+
+                self._CR_dictionary_stransitions[calculation_label]['CR_similarity'][original_index] = CR_similarity
+                self._CR_dictionary_stransitions[calculation_label]['maximum_similarity'][original_index] = maximum_similarity
+                self._CR_dictionary_stransitions[calculation_label]['max_sim_R_index'][original_index] = max_sim_R_index
+
+
+    def cluster_stransitions(self, specorder=None, structure_type='transition', additional_flags_dictionary=None, similarity_threshold=0.90,
+            metric='laplacian', gamma=1, **acsf_kwargs):
+        """
+        Uses cluster_set() to cluster STransitions structures and creates a self._cluster_dictionary_stransitions of form
+        'cluster_centers': [{calculation_label: ..., index_in_STransition: ...}],
+        'cluster_neighbors': [{calculation_label: ..., index_in_STransition: ...}],
+        'cluster_neighbors_similarities': [similarities],
+        'orphans': [{calculation_label: ..., index_in_STransition: ...}],
+        'prefiltered': [{calculation_label: ..., index_in_STransition: ...}],
+        'similarity_flags': ['I'] * len(candidate_set.structures_grouped_by_composition[composition]['indices'])
+        """
+
+        structures_type = f'{structure_type}_structures'
+
+        if not hasattr(self, 'concatenated_map'):
+            self.map_stransitions(structure_type=structure_type)
+
+        self._cluster_dictionary_compositions = cluster_set(candidate_set=self.concatenated_structures, specorder=specorder, 
+                additional_flags_dictionary=additional_flags_dictionary, similarity_threshold=similarity_threshold,
+                metric=metric, gamma=gamma, **acsf_kwargs)
+
+        compositions = self._cluster_dictionary_compositions.keys()
+
+        all_cluster_centers = []
+        all_cluster_neighborlists = []
+        all_similarities = []
+        all_orphans = []
+        all_prefiltered = []
+        all_similarity_result_flags = []
+
+        for composition in compositions:
+
+            for cluster_center in self._cluster_dictionary_compositions[composition]['cluster_centers_indices']:
+                calculation_label, index_in_stransition = self.inverse_map[cluster_center].values()
+                all_cluster_centers.append({'calculation_label': calculation_label, 'index': index_in_stransition})
+
+            for i, cluster_neighbors in enumerate(self._cluster_dictionary_compositions[composition]['cluster_neighbors_indices']):
+
+                current_neighborlist = []
+
+                for cluster_neighbor in cluster_neighbors:
+                    calculation_label, index_in_stransition = self.inverse_map[cluster_neighbor].values()
+                    current_neighborlist.append({'calculation_label': calculation_label, 'index': index_in_stransition})
+
+                all_cluster_neighborlists.append(current_neighborlist)
+                all_similarities.append(self._cluster_dictionary_compositions[composition]['cluster_neighbors_similarities'][i])
+
+            for orphan in self._cluster_dictionary_compositions[composition]['orphans_indices']:
+                calculation_label, index_in_stransition = self.inverse_map[orphan].values()
+                all_orphans.append({'calculation_label': calculation_label, 'index': index_in_stransition})
+
+            for prefiltered in self._cluster_dictionary_compositions[composition]['prefiltered_indices']:
+                calculation_label, index_in_stransition = self.inverse_map[prefiltered].values()
+                all_prefiltered.append({'calculation_label': calculation_label, 'index': index_in_stransition})
+            for i, index in enumerate(self.concatenated_structures.structures_grouped_by_composition[composition]['indices']):
+                calculation_label, index_in_stransition = self.inverse_map[index].values()
+                similarity_flag = self._cluster_dictionary_compositions[composition]['similarity_result_flags'][i]
+                all_similarity_result_flags.append({'calculation_label': calculation_label, 'index': index_in_stransition, 'similarity_flag': similarity_flag})
+
+
+        self._cluster_dictionary_stransitions = {
+                'cluster_centers': all_cluster_centers, 
+                'cluster_neighbors': all_cluster_neighborlists,
+                'cluster_neighbors_similarities': all_similarities,
+                'orphans': all_orphans,
+                'prefiltered': all_prefiltered,
+                'similarity_flags': all_similarity_result_flags
+                }
+
+
+    def create_uniqueness_dictionary(self):
+        """
+        Creates self._uniqueness_dictionary for future evaluation against reference based on self._cluster_dictionary_stransitions.
+        """
+
+        # Creates `self._uniqueness_dictionary` of form {calculation_label: flags},
+        # where `flags` is a list ['U_NBR', 'U_CTR', ... , 'N_D'] of length = # of transition structures
+
+        self._uniqueness_dictionary = camus.utils.new_dict()
+        self._stopping_index = camus.utils.new_dict()
+
+        for calculation_label in self.concatenated_map.keys():
             
-            no_of_structures = len(self.stransitions[calculation_label].transition_structures.structures)
+            no_of_structures = len(self.concatenated_map[calculation_label])
             initialize_list = ['I'] * no_of_structures
 
-            self.training_flags[calculation_label] = initialize_list
+            self._uniqueness_dictionary[calculation_label] = initialize_list
+            self._stopping_index[calculation_label] = -1
 
-        ##############################################
-        # Potential preprocessing (maximum displacement, etc.) 
-        # using additional_criteria goes here
-        ##############################################
+        for orphan in self._cluster_dictionary_stransitions['orphans']:
+            calculation_label, index = orphan.values()
+            self._uniqueness_dictionary[calculation_label][index] = 'U_ORP'
 
-        # Create descriptors for the training set
+        for i, cluster_center in enumerate(self._cluster_dictionary_stransitions['cluster_centers']):
+            calculation_label, index = cluster_center.values()
+            self._uniqueness_dictionary[calculation_label][index] = 'U_CTR'
 
-        if (self._training_set.descriptors == []):
-            self._training_set.set_acsf_parameters(**acsf_kwargs)
-            self._training_set.calculate_descriptors()
-            
+            for cluster_neighbor in self._cluster_dictionary_stransitions['cluster_neighbors'][i]:
+                calculation_label_n, index_n = cluster_neighbor.values()
+                self._uniqueness_dictionary[calculation_label_n][index_n] = 'U_NBR'
+
+        for prefiltered in self._cluster_dictionary_stransitions['prefiltered']:
+            calculation_label, index = prefiltered.values()
+
+            similarity_flag_entry = next(item for item in self._cluster_dictionary_stransitions['similarity_flags'] 
+                    if (item['calculation_label'] == calculation_label and item['index'] == index))
+
+            similarity_flag = similarity_flag_entry['similarity_flag']
+            self._uniqueness_dictionary[calculation_label][index] = similarity_flag
+
+
+    def create_evaluation_dictionary(self):
+        """
+        Creates self._evaluation_dictionary for future evaluation against reference based on self._cluster_dictionary_stransitions and self._uniqueness_dictionary.
+        """
+
+        if not hasattr(self, '_uniqueness_dictionary'):
+            self.create_uniqueness_dictionary()
+
+        self._evaluation_dictionary = camus.utils.new_dict()
+
+        for calculation_label in self.concatenated_map.keys():
+
+            no_of_structures = len(self.concatenated_map[calculation_label])
+            initial_status_list = ['I'] * no_of_structures
+
+            self._evaluation_dictionary[calculation_label] = {
+                    'status_list': initial_status_list,
+                    'waiting_for': [None] * no_of_structures,
+                    'neighbor_of': [None] * no_of_structures
+                    }
+
 
     def get_maximum_displacement_properties(self, structure_type='minima'):
 
@@ -1305,21 +1505,21 @@ def compare_sets(reference_set, candidate_set, specorder=None, similarity_thresh
 
     CR_dictionary = {composition: {
         'CR_similarity': ['I'] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
-        'maximum_similarity': [0] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
+        'maximum_similarity': [0.0] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
         'max_sim_R_index': [-1] * len(candidate_set.structures_grouped_by_composition[composition]['indices'])
         } for composition in candidate_set.structures_grouped_by_composition.keys()}
 
     # set descriptors to groups
     
     for composition in candidate_set.structures_grouped_by_composition.keys():
-        if not candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors:
-            indices = candidate_set.structures_grouped_by_composition[composition]['indices']
-            candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors = [candidate_set.descriptors[i] for i in indices]
+#        if not candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors:
+        indices = candidate_set.structures_grouped_by_composition[composition]['indices']
+        candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors = [candidate_set.descriptors[i] for i in indices]
 
     for composition in reference_set.structures_grouped_by_composition.keys():
-        if not reference_set.structures_grouped_by_composition[composition]['structures'].descriptors:
-            indices = reference_set.structures_grouped_by_composition[composition]['indices']
-            reference_set.structures_grouped_by_composition[composition]['structures'].descriptors = [reference_set.descriptors[i] for i in indices]
+#        if not reference_set.structures_grouped_by_composition[composition]['structures'].descriptors:
+        indices = reference_set.structures_grouped_by_composition[composition]['indices']
+        reference_set.structures_grouped_by_composition[composition]['structures'].descriptors = [reference_set.descriptors[i] for i in indices]
 
     # get common compositions
 
@@ -1369,7 +1569,7 @@ def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None,
     """
     Cluster `candidate_set` around structures with the maximum number of similar neighbors.
     Returns `cluster_dictionary` listing the centers of clusters, etc... 
-    If `additional_flags_dictionary` is given, such as a `CR_dictionary`, will ignore structures with 'N_*' flags. Must be shaped as ``
+    If `additional_flags_dictionary` is given, such as a `CR_dictionary`, will ignore structures with 'N_*' flags. Must be shaped as `CR_dictionary`.
     """
 
     # (1) Get/calculate descriptors
@@ -1386,9 +1586,9 @@ def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None,
     # set descriptors to groups
 
     for composition in candidate_set.structures_grouped_by_composition.keys():
-        if not candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors:
-            indices = candidate_set.structures_grouped_by_composition[composition]['indices']
-            candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors = [candidate_set.descriptors[i] for i in indices]
+#        if not candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors:
+        indices = candidate_set.structures_grouped_by_composition[composition]['indices']
+        candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors = [candidate_set.descriptors[i] for i in indices]
 
     # initialize cluster_dictionary
 

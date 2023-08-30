@@ -26,12 +26,6 @@ print(f'Created Sisyphus set randomly. {len(camus_object.Cstructures.sisyphus_se
 candidate_structures = camus.Structures(structures=candidate_structs)
 candidate_structures2 = camus.Structures(structures=candidate_structs2)
 
-unique_structs = camus_object.Cstructures.find_unique_structures(reference_set_structures=camus_object.Cstructures, candidate_set_structures=candidate_structures)
-unique_structs2 = camus_object.Cstructures.find_unique_structures(reference_set_structures=camus_object.Cstructures, candidate_set_structures=candidate_structures2)
-
-print(f'Found {len(unique_structs)} unique structures.')
-print(f'Found {len(unique_structs2)} unique structures.')
-
 empty = camus.Camus(structs)
 
 print(f'Created camus object without any structures.')
