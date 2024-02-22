@@ -531,7 +531,8 @@ class Camus:
             raise Exception("POTCAR file required by VASP was not found.")
 
     def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
-            input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic', path_to_potcar=None):
+            input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic', 
+            path_to_potcar=None, from_eval_dict=False, path_to_eval_dict=None):
 
         """
         Creates a number of `input_structures` directories in `base_directory` with the names
@@ -552,7 +553,7 @@ class Camus:
 
         # Set default input_structures to self.Cstructures.structures
         if input_structures is None:
-             input_structures = self.Cstructures.structures
+            input_structures = self.Cstructures.structures
 
         # Create base directory if it does not exist
         if not os.path.exists(base_directory):
@@ -561,36 +562,36 @@ class Camus:
         # Special case of single input structure:
         if isinstance(input_structures, Atoms): input_structures = [input_structures]
 
+        # When used in the complete run
+        if from_eval_dict:
+            if path_to_eval_dict is None:
+                path_to_eval_dict = os.path.join(base_directory, 'eval_dictionary.pkl')
+            eval_dictionary = load_pickle(path_to_eval_dict)
+            eval_keys = list(eval_dictionary.keys())
+
         # Write the calculation files 
-        if isinstance(prefix, list):
-            for (i, structure), p in zip(enumerate(input_structures), prefix):
-                target_directory = os.path.join(base_directory, f'{p}_{i}')
+        for i, structure in enumerate(input_structures):
+            target_directory = os.path.join(base_directory, f'{prefix}_{i}')
 
-                if calculation_type == 'LAMMPS':
-                    self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+            if calculation_type == 'LAMMPS':
+                self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
 
-                elif calculation_type == 'VASP':
-                    self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
+            elif calculation_type == 'VASP':
+                
+                if from_eval_dict:
+                    eval_dictionary[eval_keys[i]]['dft_directory'] = target_directory
 
-                if schedule:
-                    self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
+                self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
 
+            else:
+                raise Exception(f"Calculation type {calculation_type} not implemented.")
 
-        else:
-            for i, structure in enumerate(input_structures):
-                target_directory = os.path.join(base_directory, f'{prefix}_{i}')
+            if schedule:
+                self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
-                if calculation_type == 'LAMMPS':
-                    self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+            if from_eval_dict:
+                save_to_pickle(eval_dictionary, path_to_eval_dict)
 
-                elif calculation_type == 'VASP':
-                    self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
-
-                else:
-                    raise Exception(f"Calculation type {calculation_type} not implemented.")
-
-                if schedule:
-                    self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
     def run_batch_calculation(self, base_directory=None, prefix='minimization', job_filename='sub.sh'):
         """
@@ -607,7 +608,7 @@ class Camus:
 
         # Assume base_directory = cwd
         if not base_directory:
-            base_directory = os.get_cwd()
+            base_directory = os.getcwd()
 
         # Remember cwd so we can return back at the end of the method
         start_cwd = os.getcwd()
@@ -637,8 +638,9 @@ class Camus:
 
         os.chdir(start_cwd)
 
-    def parse_batch_calculation(self, specorder=None, base_directory=None, jobs_info_dict_filename=None, calculation_type='LAMMPS_minimization',
-            save_traj=True, traj_filename='minimized_structures.traj', **kwargs):
+
+    def parse_batch_calculation(self, specorder=None, base_directory=None, jobs_info_dict_filename=None, calculation_type='LAMMPS_minimization', 
+            save_traj=True, traj_filename='minimized_structures.traj', path_to_eval_dict=None, from_eval_dict=False, **kwargs):
         """
         Note: run self.Cscheduler.check_job_list_status() before parsing to get updated jobs info.
         Parses results from calculations of `calculation_type` in subdirectories of `base_directory`. If `base_directory` is not given,
@@ -655,11 +657,15 @@ class Camus:
 
         # Assume base_directory = cwd
         if not base_directory:
-            base_directory = os.get_cwd()
+            base_directory = os.getcwd()
 
         # Search for jobs_info_dict
         if not jobs_info_dict_filename:
             jobs_info_filename = glob.glob(os.path.join(f'{base_directory}', '*_info.pkl'))[0]
+
+        if from_eval_dict:
+            if not path_to_eval_dict:
+                path_to_eval_dict = os.path.join(base_directory, 'eval_dictionary.pkl')
 
         self.Cscheduler.jobs_info = load_pickle(os.path.join(f'{base_directory}', jobs_info_filename))
 
@@ -678,7 +684,7 @@ class Camus:
         elif calculation_type == 'VASP_SCF':
             # Initialize self.Cstructures.dft_set with None
             self.Cstructures.dft_set = [None] * len(self.Cscheduler.jobs_info.keys())
-            self.parse_batch_vasp(jobs_info=self.Cscheduler.jobs_info, calculation_type=calculation_type)
+            self.parse_batch_vasp(jobs_info=self.Cscheduler.jobs_info, calculation_type=calculation_type, path_to_eval_dict=path_to_eval_dict, from_eval_dict=from_eval_dict)
 
             # Save the converged DFT structures if specified
             if save_traj:
@@ -723,11 +729,15 @@ class Camus:
                 else:
                     raise Exception(f"Calculation type {calculation_type} not implemented.")
 
-    def parse_batch_vasp(self, jobs_info, calculation_type):
+    def parse_batch_vasp(self, jobs_info, calculation_type, path_to_eval_dict=None, from_eval_dict=True):
         """
         Parses finished VASP calculations in directories given by `jobs_info` dictionary. Only `calculation_type`=='VASP_SCF' is implemented for now.
         """
-
+        
+        if from_eval_dict:
+            eval_dictionary = load_pickle(path_to_eval_dict)
+            eval_keys = list(eval_dictionary.keys())
+                                 
         for job_id, job_info in jobs_info.items():
 
             if job_info['job_status'] == 'FINISHED':
@@ -747,14 +757,24 @@ class Camus:
                         # Check for convergence
                         for line in out_lines:
                             if 'Voluntary' in line:
-                                self.Cstructures.dft_set[structure_index] = read(outcar_file)
+                                #self.Cstructures.dft_set[structure_index] = read(outcar_file)
+                                structure = read(outcar_file)
+
+                                if from_eval_dict:
+                                    no = int(directory.split('_')[-1])
+                                    eval_dictionary[eval_keys[no]]['dft_energy'] = structure.get_potential_energy()
+                                    eval_dictionary[eval_keys[no]]['dft_forces'] = structure.get_forces()
+                                    eval_dictionary[eval_keys[no]]['dft_flag'] = 'F' # Mark as (F)inished
 
                             else:
-                                self.Cscheduler.jobs_info[f'{job_id}'] = 'NOT CONVERGED'
+                                self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'NOT CONVERGED'
 
                     else: 
                         self.Cscheduler.jobs_info[f'{job_id}']['job_status'] = 'CALCULATION_FAILED'
 
                 else:
                     raise Exception(f"Calculation type {calculation_type} not implemented.")
+
+                if from_eval_dict:
+                    save_to_pickle(eval_dictionary, path_to_eval_dict)
 
