@@ -1895,19 +1895,20 @@ def self_energy_correction(input_structures, self_energies, specorder=None):
 
     corrected_structures = []
     for input_structure in input_structures:
-        composition = camus.utils.create_index_list(input_structure.get_chemical_symbols())
+        composition = camus.utils.create_index_dict(input_structure.get_chemical_symbols())
         corrected_energy = input_structure.get_potential_energy()
 
         for spec in specorder:
             corrected_energy -= len(composition[spec])*self_energies[spec]
 
-        input_structure.calc = SinglePointCalculator(input_structure, energy=corrected_energy)
+        forces = input_structure.get_forces()
+        input_structure.calc = SinglePointCalculator(input_structure, energy=corrected_energy, forces=forces)
         corrected_structures.append(input_structure)
 
     return corrected_structures
 
 
-def evaluate_sisyphus_run(base_directory=None, eval_dictionary_path=None, specorder=None, dataset=None, write=False, concatenate=False, energy_min=1.0, energy_max=2.0, traj_filename='retraining_set.extxyz'):
+def evaluate_sisyphus_run(base_directory=None, eval_dictionary_path=None, specorder=None, dataset=None, write_extxyz=False, concatenate=False, energy_min=1.0, energy_max=2.0, traj_filename='retraining_set.extxyz'):
     """
     - `base_directory` the same as for DFT
     - `dataset` for fitting of self energies, ideally the one used for training 
@@ -1932,14 +1933,14 @@ def evaluate_sisyphus_run(base_directory=None, eval_dictionary_path=None, specor
     for key in eval_dictionary.keys():
 
         # self energy correction
-        self_energy_correction = 0
+        self_energy_correct = 0
         composition = eval_dictionary[key]['composition']
         for spec in self_energies.keys():
             no_of_spec = len(composition[spec])
-            self_energy_correction += no_of_spec*self_energies[spec]
+            self_energy_correct += no_of_spec*self_energies[spec]
 
-        corrected_dft_energy = eval_dictionary[key]['dft_energy'] - self_energy_correction
-        corrected_ml_energy = eval_dictionary[key]['ml_energy'] - self_energy_correction
+        corrected_dft_energy = eval_dictionary[key]['dft_energy'] - self_energy_correct
+        corrected_ml_energy = eval_dictionary[key]['ml_energy'] - self_energy_correct
 
         eval_dictionary[key]['corrected_dft_energy'] = abs(corrected_dft_energy)
         eval_dictionary[key]['corrected_ml_energy'] = abs(corrected_ml_energy)
@@ -1960,7 +1961,7 @@ def evaluate_sisyphus_run(base_directory=None, eval_dictionary_path=None, specor
             structures_for_retraining.append(structure)
 
     # Check if we found any structures for retraining
-    if write and len(structures_for_retraining) != 0:
+    if write_extxyz and len(structures_for_retraining) != 0:
         # Write out the dataset
         if concatenate:
             original = read(dataset)
@@ -1975,7 +1976,7 @@ def evaluate_sisyphus_run(base_directory=None, eval_dictionary_path=None, specor
         else:
             #self energy correction
             corrected_structures_for_retraining = self_energy_correction(input_structures=structures_for_retraining, self_energies=self_energies, specorder=specorder)
-            write(os.path.join(base_directory, traj_filename), corrected_structure_for_retraining, format='extxyz')
+            write(os.path.join(base_directory, traj_filename), corrected_structures_for_retraining, format='extxyz')
 
     # Save the dictionary
     camus.utils.save_to_pickle(eval_dictionary, os.path.join(base_directory, 'eval_dictionary.pkl'))
