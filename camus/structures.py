@@ -81,7 +81,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         if descriptors is not None:
             self.descriptors = descriptors
         else:
-            self.descriptors = []
+            self.descriptors = np.empty(0)
 
         if acsf_parameters is not None:
             self.acsf_parameters = acsf_parameters
@@ -1259,6 +1259,7 @@ class STransitions():
             for prefiltered in self._cluster_dictionary_compositions[composition]['prefiltered_indices']:
                 calculation_label, index_in_stransition = self.inverse_map[prefiltered].values()
                 all_prefiltered.append({'calculation_label': calculation_label, 'index': index_in_stransition})
+
             for i, index in enumerate(self.concatenated_structures.structures_grouped_by_composition[composition]['indices']):
                 calculation_label, index_in_stransition = self.inverse_map[index].values()
                 similarity_flag = self._cluster_dictionary_compositions[composition]['similarity_result_flags'][i]
@@ -1611,18 +1612,19 @@ def compare_sets(reference_set, candidate_set, specorder=None, similarity_thresh
     `reference_set_structures` and `candidate_set_structures` must be instances of Structures class.
 
     The algorithm proceeds as follows:
-    (1) If `*_set.descriptors==None`, calculate descriptors using `**acsf_kwargs`
+    (1) If `*_set.descriptors==np.empty(0)` (not yet calculated), calculate descriptors using `**acsf_kwargs`
     (2) Divide `*_set* into groups by composition
-    (3) Find `reference_set` structures eliminating structures with a similarity > `threshold` w.r.t. `reference_set`
+    (3) Calculate the `CR_dictionary` for the `candidate_set` using the `insert_reference` algorithm
+        Possible status_flags = 'I': initialized, 'U_C': unique by composition, 'U_D': unique by descriptor comparison , 'N_D': not unique by descriptor comparison
     """
 
     # (1) Get/calculate descriptors
 
-    if not candidate_set.descriptors:
+    if not candidate_set.descriptors.any():
         candidate_set.set_acsf_parameters(**acsf_kwargs)
         candidate_set.calculate_descriptors()
 
-    if not reference_set.descriptors:
+    if not reference_set.descriptors.any():
         reference_set.set_acsf_parameters(**acsf_kwargs)
         reference_set.calculate_descriptors()
 
@@ -1708,7 +1710,7 @@ def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None,
 
     # (1) Get/calculate descriptors
 
-    if not candidate_set.descriptors:
+    if not candidate_set.descriptors.any():
         candidate_set.set_acsf_parameters(**acsf_kwargs)
         candidate_set.calculate_descriptors(n_jobs=n_jobs, positions=positions)
 
