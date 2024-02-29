@@ -90,6 +90,7 @@ class Slurm(Scheduler):
             'mem': '7gb', 
             'nodes': '1',
             'ntasks': '1',
+            'exclude': '',
             'modules': ['gnu9', 'openmpi4/4.1.1'],
             'additional_commands': ['export OMP_NUM_THREADS=$SLURM_NTASKS', 'ulimit -s unlimited'],
             'run_command': f'{run_lammps} {lammps_exe} {lammps_flags} -in {input_file} > {output_file}' 
@@ -133,6 +134,7 @@ class Slurm(Scheduler):
 #SBATCH --mem={self.scheduler_parameters['mem']}
 #SBATCH --nodes={self.scheduler_parameters['nodes']}
 #SBATCH --ntasks={self.scheduler_parameters['ntasks']}
+#SBATCH --exclude={self.scheduler_parameters['exclude']}
 
 module purge
 """)
@@ -182,15 +184,15 @@ module purge
             self.jobs_info[f'{job_id}']['job_status'] = 'FINISHED'
 
             # If job is 'FINISHED' check if it wasn't explicitly cancelled by a user or administrator
-            if self.jobs_info[f'{job_id}']['job_status'] == 'FINISHED':
-
-                try:
-                    sjob_result = subprocess.check_output(['sacct', '-j', str(job_id), '--format=state'], stderr=subprocess.DEVNULL)
-                except subprocess.CalledProcessError as e:
-                    print(f"Command failed with return code {e.returncode}")
-                  
-                if ('CANCELLED' in sjob_result.decode('utf-8')):
-                    self.jobs_info[f'{job_id}']['job_status'] = 'JOB_CANCELLED'
+            #if self.jobs_info[f'{job_id}']['job_status'] == 'FINISHED':
+                
+                #try:
+                #    sjob_result = subprocess.check_output(['sacct', '-j', str(job_id), '--format=state'], stderr=subprocess.DEVNULL)
+                #except subprocess.CalledProcessError as e:
+                #    print(f"Command failed with return code {e.returncode}")
+                #  
+                #if ('CANCELLED' in sjob_result.decode('utf-8')):
+                #    self.jobs_info[f'{job_id}']['job_status'] = 'JOB_CANCELLED'
 
         # Job still running
         else:
@@ -242,7 +244,7 @@ module purge
 
         # Assume base_directory = cwd
         if not base_directory:
-            base_directory = os.get_cwd()
+            base_directory = os.getcwd()
 
         # Search for jobs_info_dict
         if not jobs_info_filename:

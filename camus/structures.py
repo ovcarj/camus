@@ -18,7 +18,7 @@ from functools import cached_property
 from ase import Atom, Atoms
 from ase.calculators.singlepoint import SinglePointCalculator
 
-from ase.io import write
+from ase.io import read, write
 from ase.io.lammpsrun import read_lammps_dump
 
 from dscribe.descriptors import ACSF
@@ -621,66 +621,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
     maximum_displacement_all_structures = cached_property(get_maximum_displacement_all_structures)
 
     ###
-
-    def calculate_self_energies(self, input_structures=None, specorder=None):
-
-        if input_structures is None:
-            input_structures = self.structures
-
-        # The fit needs enough structures to be considered `good`
-        if isinstance(input_structures, Atoms):
-            raise RuntimeError('You cannot fit on just one structure')
-        elif len(input_structures) < 100:
-            warnings.warn(f'{len(input_structures)} might not be enough structures to produce good fit.\n Condsider increasing the size of your dataset.', FutureWarning)
-        else:
-            pass
-
-        # If `specorder` not given assume the specorder from the first structure in `input_structures`
-        if specorder is not None:
-            specorder = specorder
-        else:
-            specorder = []
-            for species in input_structures[0].get_chemical_symbols(): 
-                if species not in specorder:
-                    specorder.append(species)
-
-        chemical_species_counter = {species: [] for species in specorder}
-
-        # Count the number of atoms of each species in the `input_structures`
-        for i, structure in enumerate(input_structures):
-
-            chemical_species = structure.get_chemical_symbols()
-            count = Counter()
-
-            for species in chemical_species:
-                count[species] += 1
-
-            for species, count in count.items():
-                chemical_species_counter[species].append(count)
-
-            # If given species is not present in the specific structure add count of zero
-            for species in chemical_species_counter:
-                if len(chemical_species_counter[species]) != i + 1:
-                    chemical_species_counter[species].append(0)
-
-        # The total number of atoms of each species in the `input_structures`
-        no_per_species = [chemical_species_counter[species] for species in specorder]
-        no_per_species.append([1] * (len(input_structures)))  # Corrected line 
-        no_per_species = np.array(no_per_species).transpose()
-
-        # Get energy for each structure 
-        energy = [structure.get_potential_energy() for structure in input_structures]
-        energy = np.array(energy)
-
-        # Least square fit
-        lstsq_solution, _, _, _ = np.linalg.lstsq(no_per_species, energy, rcond=None)
-        interaction_energy = lstsq_solution[-1] # if it's even useful to us
-
-        # Create `self_energies` dictionary for comprehensive output
-        #self.self_energies = {}
-        for species, energy in zip(specorder, lstsq_solution[:-1]):
-            self.self_energies[species] = energy
-
+    """
     def energy_correction(self, input_structures=None, specorder=None):
 
         if input_structures is None:
@@ -717,7 +658,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             corrected_energies.append(corrected_energy)
 
         return np.array(corrected_energies)
-
+    """
 
 class STransition():
 
@@ -1056,7 +997,7 @@ class STransitions():
 
         # Initialize self.stransitions attribute as a dictionary of STransitions objects
 
-        self.stransitions = {key: STransition(stransition=(key, value)) for key, value in self._sisyphus_dictionary.items()}
+        self.stransitions = {key: STransition(stransition=(key, value)) for key, value in self._sisyphus_dictionary.items() if value['status']=='PASSED' or value['status'].startswith('FAILED_')}
 
         # Initialize self.stransitions_properties dictionary
 
@@ -1151,7 +1092,7 @@ class STransitions():
         self.concatenated_structures = Structures(concatenated_structures_flat)
 
 
-    def prefilter_stransitions(self, criteria=None, structure_type='transition'):
+    def prefilter_stransitions(self, specorder, mode=None, structure_type='transition', displaced_elements=None, activation_energy_threshold=None):
         """
         Placeholder for a method which could possibly preprocess STransitions before it goes to 
         structure comparisons.
@@ -1163,13 +1104,63 @@ class STransitions():
         Of course, we have to take care that indices are correctly mapped...
 
         Flags: ['I', 'F_*'] -> if F_*, structure will be ignored
+        
+        The method takes displaced elements and their correcponding threshold in form of: {'element': tuple(displacement_threshold_min,displacement_threshold_max)
         """
 
         structures_type = f'{structure_type}_structures'
 
-        if criteria is None:
-            self.prefilter_dictionary = {calculation_label: ['I'] * len(self.stransitions[calculation_label].__getattribute__(structures_type).structures)
-                    for calculation_label in self.stransitions.keys()}
+        if not hasattr(self, 'concatenated_map'):
+            self.map_stransitions(structure_type=structure_type)
+
+        if not hasattr(self.concatenated_structures, 'structures_grouped_by_composition'):
+            self.concatenated_structures.group_by_composition(specorder=specorder) 
+        
+        if any(not value for value in self.stransitions_properties.values()):
+            self.get_all_properties()
+        
+        # Initialize the `prefilter_dictionary`
+        self.prefilter_dictionary = {composition: {'CR_similarity': ['I'] * len(self.concatenated_structures.structures_grouped_by_composition[composition]['indices'])} for composition in self.concatenated_structures.structures_grouped_by_composition.keys()}
+
+        if mode is None:
+            pass
+        elif mode == 'displacement':            
+
+            for key in self.stransitions_properties.keys():
+
+                transition_displacements = self.stransitions_properties[key]['transition_maximum_displacement_all_structures']
+                #
+                for element, threshold in displaced_elements.items():
+                    structure_index = transition_displacements[element]['structure_index']
+                    maximum_displacement = transition_displacements[element]['maximum_displacement']
+                    
+                    index_in_cm = self.concatenated_map[key][structure_index]
+                    structure = self.concatenated_structures.structures[index_in_cm]
+                    
+                    # Make sure the compostion is in specorder
+                    sorted_composition = sorted(structure.get_chemical_symbols(), key=lambda item: specorder.index(item))
+                    composition_dict = camus.utils.create_index_dict(sorted_composition)
+                    composition_list = [0]*len(specorder)
+
+                    for i, spec in enumerate(composition_dict.keys()):
+                        composition_list[i] = len(composition_dict[spec])
+                    structure_composition = tuple(composition_list)
+                    index_in_gbc = self.concatenated_structures.structures_grouped_by_composition[structure_composition]['indices'].index(index_in_cm)
+                    
+                    if threshold[0] <= maximum_displacement <= threshold[1]:
+                        self.prefilter_dictionary[structure_composition]['CR_similarity'][index_in_gbc] = 'U_PRF'
+                    else:
+                        self.prefilter_dictionary[structure_composition]['CR_similarity'][index_in_gbc] = 'N_PRF'
+                            
+        elif mode == 'activation_energy':
+
+            for key in self.stransitions_properties.keys():
+                activation_energy = self.stransitions_properties[key]['activation_e_forward']
+                structure_index = np.array(self.stransitions_properties[key]['all_energies']).argmax()
+                if activation_energy > activation_energy_threshold:
+                    self.prefilter_dictionary[key][structure_index] = 'U_PRF'
+                else:
+                    self.prefilter_dictionary[key][structure_index] = 'N_PRF'
 
     
     def compare_to_reference(self, reference_set, structure_type='transition', specorder=None, similarity_threshold=0.90,
@@ -1215,7 +1206,7 @@ class STransitions():
 
 
     def cluster_stransitions(self, specorder=None, structure_type='transition', additional_flags_dictionary=None, similarity_threshold=0.90,
-            metric='laplacian', gamma=1, **acsf_kwargs):
+                metric='laplacian', gamma=1, **acsf_kwargs):
         """
         Uses cluster_set() to cluster STransitions structures and creates a self._cluster_dictionary_stransitions of form
         'cluster_centers': [{calculation_label: ..., index_in_STransition: ...}],
@@ -1365,7 +1356,7 @@ class STransitions():
         return maximum_displacement_all_structures_properties, average_displacement_at_maximum, chemical_species
 
 
-    def plot_maximum_displacement(self, structure_type='minima', savefig=False, dpi=450, fname = 'max_displacement', save_format='pdf', return_fig_ax=False):
+    def plot_maximum_displacement(self, structure_type='minima', displacement_difference=False, savefig=False, dpi=450, fname = 'max_displacement', save_format='pdf', return_fig_ax=False):
 
         maximum_displacement_all_structures_properties, average_displacement_at_maximum, chemical_species = self.get_maximum_displacement_properties(structure_type=structure_type)
 
@@ -1385,12 +1376,23 @@ class STransitions():
 
                 color1 = 'royalblue'
                 color2 = 'salmon'
-                
+                color3 = 'aquamarine'
+
                 maximum_displacement = maximum_displacement_all_structures_properties[index][species]
                 average_displacement = average_displacement_at_maximum[index][species]
 
-                bar_max = ax.bar(x, maximum_displacement['maximum_displacement'], width=width, color=color1, align='edge', edgecolor='black', linewidth=0.7, label='Maximum displacement')
-                bar_avg = ax.bar(x, average_displacement[maximum_displacement['structure_index']], width=width, color=color2, align='edge', edgecolor='black', linewidth=0.7, label='Average displacement')
+                if not displacement_difference:
+                    bar_max = ax.bar(x, maximum_displacement['maximum_displacement'], width=width, color=color1, align='edge', edgecolor='black', linewidth=0.7, label='Maximum displacement')
+                    bar_avg = ax.bar(x, average_displacement[maximum_displacement['structure_index']], width=width, color=color2, align='edge', edgecolor='black', linewidth=0.7, label='Average displacement')
+                    
+                    #Legend
+                    ax.legend(handles=[bar_max, bar_avg], loc='best', fontsize=15)
+
+                else:
+                    bar_diff = ax.bar(x, abs(maximum_displacement['maximum_displacement']-average_displacement[maximum_displacement['structure_index']]), width=width, color=color3, align='edge', edgecolor='black', linewidth=0.7, label='Displacement difference')
+ 
+                    #Legend
+                    ax.legend(handles=[bar_diff], loc='best', fontsize=15)
 
         xticks = list(chemical_species)
         plt.xticks(np.arange(1, len(xticks) + 1), xticks, fontsize=18)
@@ -1399,8 +1401,7 @@ class STransitions():
         ax.tick_params(axis='y', which='minor', length=4)
         ax.tick_params(axis='x', which='both', bottom=False)
 
-        ax.legend(handles=[bar_max, bar_avg], loc='best', fontsize=15)
-
+        
         # Save plot
 
         if savefig == False:
@@ -1419,7 +1420,6 @@ class STransitions():
             maximum_displacement_all_structures_properties = self.get_maximum_displacement_properties(structure_type='saddlepoints')[0]
         else:
             maximum_displacement_all_structures_properties, _, chemical_species = self.get_maximum_displacement_properties(structure_type='saddlepoints')
-
 
         species_colors = ['midnightblue', 'firebrick', 'limegreen', 'gold']
         
@@ -1455,6 +1455,106 @@ class STransitions():
             return fig, ax
 
 
+    def sisyphus2dft(self, reference_set, base_directory=None, mode=None, specorder=None, structure_type='transition', additional_flags_dictionary=None,
+        similarity_threshold=0.90, metric='laplacian', gamma=1, save_traj=True, traj_filename='dft_input.traj', displaced_elements=None, activation_energy_threshold=None, **acsf_kwargs):
+
+        """
+        - `reference_set` should be the set used in the training of the currectly used potential
+        - `base_directory` will be the same for the coming DFT calculations
+        - `mode`:   None ... does basic clustering 
+                    `displacement` ... prefilters the structures based on displacement input `displaced_elements` as a dictionary containing {element: (min,max)}
+                    `trainsition_energy` ... prefilters the strainsitions base on their `activation_energy`           
+        """
+        # This should be the same `base_directory` that will then get used in the DFT calculation
+        if base_directory is not None:
+            base_directory = base_directory
+        else:
+            base_directory = os.path.join(os.getcwd(), 'base_dft')
+        
+        # Create base directory if it does not exist
+        if not os.path.exists(base_directory):
+            os.makedirs(base_directory)
+
+        if any(not value for value in self.stransitions_properties.values()):
+            self.get_all_properties()
+
+        # The default is to cluster the set without any extra conditions
+        if mode is None:
+
+            # Cluster if not previously clustered
+            if not hasattr(self, '_cluster_dictionary_stransitions'):
+                self.cluster_stransitions(specorder=specorder, structure_type=structure_type, similarity_threshold=similarity_threshold, 
+                        metric=metric, gamma=gamma, **acsf_kwargs)
+                
+
+        elif mode=='displacement':
+
+            # Prefilter if not previously done
+            if additional_flags_dictionary is None:
+                self.prefilter_stransitions(mode=mode, specorder=specorder, displaced_elements=displaced_elements)
+                additional_flags_dictionary = self.prefilter_dictionary
+
+            # Cluster, taking into acount the prefiltered structures in the `additional_flags_dictionary` 
+            if not hasattr(self, '_cluster_dictionary_stransitions'):
+                self.cluster_stransitions(specorder=specorder, structure_type=structure_type, additional_flags_dictionary=additional_flags_dictionary, 
+                        similarity_threshold=similarity_threshold, metric=metric, gamma=gamma, **acsf_kwargs)
+
+        elif mode=='transition_energy':
+            pass
+
+        # Pick only the representative structures
+        cluster_centers = self._cluster_dictionary_stransitions['cluster_centers']
+        orphans = self._cluster_dictionary_stransitions['orphans']
+        if additional_flags_dictionary is not None:
+            prefiltered = self._cluster_dictionary_stransitions['prefiltered']
+        else:
+            prefiltered = []
+
+        # Create a single list of all `candidate` structures
+        candidates = cluster_centers + orphans + prefiltered
+
+        # `compare_to_reference`
+        self.compare_to_reference(reference_set=reference_set, specorder=specorder, similarity_threshold=similarity_threshold, 
+                metric=metric, gamma=gamma, **acsf_kwargs)
+        
+        # Initialize
+        eval_dictionary = {}
+        input_structures = []
+        
+        for candiate in candidates:
+            calculation_label = candiate['calculation_label']
+            index = candiate['index']
+
+            if self._CR_dictionary_stransitions[calculation_label]['CR_similarity'][index].startswith('U_'):
+
+                eval_label = f'{calculation_label}-{index}'
+                eval_dictionary[f'{eval_label}'] = {
+                    'origin':{
+                        'stransition_label': calculation_label,
+                        'stransition_index': index,
+                        'sisyphus_dictionary': self._sisyphus_dictionary_path,
+                        },
+                    'dft_directory': None,
+                    'ml_energy': self.stransitions_properties[calculation_label]['all_energies'][index],
+                    'ml_forces': [],
+                    'dft_energy': None,
+                    'dft_forces': [],
+                    'dft_flag': 'X',
+                    'evaluation_flag': 'U', #`U`...(U)ndecided, `R`...for (R)etraining, `D`...(D)iscard
+                    'composition': camus.utils.create_index_dict(self.stransitions[calculation_label].transition_structures.structures[index].get_chemical_symbols())}
+
+                # Create the input set that will go into create VASP
+                structure = self.stransitions[calculation_label].transition_structures.structures[index]
+                input_structures.append(structure)
+ 
+        # Save the dictionary
+        camus.utils.save_to_pickle(eval_dictionary, os.path.join(base_directory, 'eval_dictionary.pkl'))
+
+        # Save a `.traj` file for a simple transition into the DFT stage
+        if save_traj:
+            write(os.path.join(base_directory, traj_filename), input_structures)
+
+
 """
 Various helper functions start here
 """
@@ -1482,7 +1582,6 @@ def calculate_displacement_IRA(atoms1, atoms2):
 
     except ImportError:
         print('IRA not found (install from https://github.com/mammasmias/IterativeRotationsAssignments)')
-
 
 
 def calculate_displacement(atoms1, atoms2):
@@ -1726,3 +1825,210 @@ def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None,
             cluster_dictionary[composition]['similarity_result_flags'][i] = 'U_ORP'
 
     return cluster_dictionary
+
+
+def calculate_self_energies(input_structures, specorder=None):
+
+    # The fit needs enough structures to be `good`
+    if isinstance(input_structures, Atoms):
+        raise RuntimeError('You cannot fit on just one structure')
+    elif len(input_structures) < 100:
+        warnings.warn(f'{len(input_structures)} might not be enough structures to produce good fit.\n Condsider increasing the size of your dataset.', FutureWarning)
+    else:
+        pass
+
+    # If `specorder` not given assume the specorder from the first structure in `input_structures`
+    if specorder is not None:
+        specorder = specorder
+    else:
+        specorder = []
+        for species in input_structures[0].get_chemical_symbols(): 
+            if species not in specorder:
+                specorder.append(species)
+
+    chemical_species_counter = {species: [] for species in specorder}
+
+    # Count the number of atoms of each species in the `input_structures`
+    for i, structure in enumerate(input_structures):
+
+        chemical_species = structure.get_chemical_symbols()
+        count = Counter()
+
+        for species in chemical_species:
+            count[species] += 1
+
+        for species, count in count.items():
+            chemical_species_counter[species].append(count)
+
+        # If given species is not present in the specific structure add count of zero
+        for species in chemical_species_counter:
+            if len(chemical_species_counter[species]) != i + 1:
+                chemical_species_counter[species].append(0)
+
+    # The total number of atoms of each species in the `input_structures`
+    no_per_species = [chemical_species_counter[species] for species in specorder]
+    no_per_species.append([1] * (len(input_structures)))  # Corrected line 
+    no_per_species = np.array(no_per_species).transpose()
+
+    # Get energy for each structure 
+    energy = [structure.get_potential_energy() for structure in input_structures]
+    energy = np.array(energy)
+
+    # Least square fit
+    lstsq_solution, _, _, _ = np.linalg.lstsq(no_per_species, energy, rcond=None)
+    interaction_energy = lstsq_solution[-1] # if it's even useful to us
+
+    # Create `self_energies` dictionary for comprehensive output
+    self_energies = {}
+    for species, energy in zip(specorder, lstsq_solution[:-1]):
+        self_energies[species] = energy
+
+    return self_energies
+
+
+def self_energy_correction(input_structures, self_energies, specorder=None):
+    """
+    - This method takes a list of ASE Atoms objects, corrects their energies using the previously calcualted `self_energies` and returns another list of    ASE Atoms objects which now have the `corrected_energy`
+    """
+    # Special case of single input structure:
+    if isinstance(input_structures, Atoms): input_structures = [input_structures]
+
+    corrected_structures = []
+    for input_structure in input_structures:
+        composition = camus.utils.create_index_dict(input_structure.get_chemical_symbols())
+        corrected_energy = input_structure.get_potential_energy()
+
+        for spec in specorder:
+            corrected_energy -= len(composition[spec])*self_energies[spec]
+
+        forces = input_structure.get_forces()
+        input_structure.calc = SinglePointCalculator(input_structure, energy=corrected_energy, forces=forces)
+        corrected_structures.append(input_structure)
+
+    return corrected_structures
+
+
+def evaluate_sisyphus_run(base_directory=None, eval_dictionary_path=None, specorder=None, dataset=None, write_extxyz=False, concatenate=False, energy_min=1.0, energy_max=2.0, traj_filename='retraining_set.extxyz'):
+    """
+    - `base_directory` the same as for DFT
+    - `dataset` for fitting of self energies, ideally the one used for training 
+    - `write=False` to initially calculate and save the corrected energies into the `eval_dictionary` to be used to determine the correct parameters for retraining set choice
+    """
+
+    if base_directory is not None:
+        base_directory = base_directory
+    else:
+        base_directory = os.path.join(os.getcwd(), 'base_dft')
+        
+    if eval_dictionary_path is None:
+        eval_dictionary_path = os.path.join(base_directory, 'eval_dictionary.pkl')
+
+    eval_dictionary = camus.utils.load_pickle(eval_dictionary_path)
+
+    #
+    self_energies = calculate_self_energies(input_structures=dataset, specorder=specorder)
+
+    structures_for_retraining = []
+
+    for key in eval_dictionary.keys():
+
+        # self energy correction
+        self_energy_correct = 0
+        composition = eval_dictionary[key]['composition']
+        for spec in self_energies.keys():
+            no_of_spec = len(composition[spec])
+            self_energy_correct += no_of_spec*self_energies[spec]
+
+        corrected_dft_energy = eval_dictionary[key]['dft_energy'] - self_energy_correct
+        corrected_ml_energy = eval_dictionary[key]['ml_energy'] - self_energy_correct
+
+        eval_dictionary[key]['corrected_dft_energy'] = abs(corrected_dft_energy)
+        eval_dictionary[key]['corrected_ml_energy'] = abs(corrected_ml_energy)
+
+        # Energy evaluation
+        energy_difference = abs(corrected_dft_energy - corrected_ml_energy)
+        if energy_difference <= energy_min:
+            eval_dictionary[key]['retraining_flag'] = 'G'
+        elif energy_difference <= energy_max:
+            eval_dictionary[key]['retraining_flag'] = 'R'
+        else:
+            eval_dictionary[key]['retraining_flag'] = 'D'
+
+        # Collect all structures marked 'R'
+        if eval_dictionary[key]['retraining_flag'] == 'R':
+            outcar_file = os.path.join(eval_dictionary[key]['dft_directory'], 'OUTCAR')
+            structure = read(outcar_file)
+            structures_for_retraining.append(structure)
+
+    # Check if we found any structures for retraining
+    if write_extxyz and len(structures_for_retraining) != 0:
+        # Write out the dataset
+        if concatenate:
+            original = read(dataset)
+            original.append(structures_for_retraining)
+
+            #self energy correction
+            corrected_original = self_energy_correction(input_structures=original, self_energies=self_energies, specorder=specorder)    
+    
+            original_filename = os.path.basename(dataset)
+            updated_filename = os.path.splitext(original_filename)[0] + '_update' + os.path.splitext(original_filename)[1]
+            write(os.path.join(base_directory, updated_filename), corrected_original, format='extxyz')
+        else:
+            #self energy correction
+            corrected_structures_for_retraining = self_energy_correction(input_structures=structures_for_retraining, self_energies=self_energies, specorder=specorder)
+            write(os.path.join(base_directory, traj_filename), corrected_structures_for_retraining, format='extxyz')
+
+    # Save the dictionary
+    camus.utils.save_to_pickle(eval_dictionary, os.path.join(base_directory, 'eval_dictionary.pkl'))
+
+
+def plot_evaluation(path_to_eval_dictionary, xlabel=r'$E_{ML} - E_{self}$', ylabel=r'$E_{DFT} - E_{self}$', sizex=15.0, sizey=15.0, fontsize=15, fit=False, histogram=False):
+    """
+    `fit` might make sense to show some sort of progress over several runs
+    `histogram` to make the assesment of the correct energy interval for retraing easier
+    """
+
+    eval_dictionary = camus.utils.load_pickle(path_to_eval_dictionary)
+    ml_energies = []
+    dft_energies = []
+    for key in eval_dictionary.keys():
+        ml_energies.append(eval_dictionary[key]['corrected_ml_energy'])
+        dft_energies.append(eval_dictionary[key]['corrected_dft_energy'])
+
+    if not histogram:
+        fig, ax = camus.utils.create_plot(xlabel=xlabel, ylabel=ylabel, sizex=sizex, sizey=sizey, fontsize=fontsize)
+        ax.scatter(ml_energies, dft_energies, s=50, zorder=0)
+        # Plot a E_ML = E_DFT line
+        e_max = max(ml_energies)
+        x = [0,e_max]
+        y = [0,e_max]
+        ax.plot(x,y, color='red', label="E_ML=E_DFT", zorder=2)
+
+        if fit:
+            fit_coefficients = np.polyfit(ml_energies, dft_energies, 1)
+            fit_line = np.poly1d(fit_coefficients)
+            ax.plot(ml_energies, fit_line(ml_energies), color='red', label="Linear fit", zorder=4)
+            
+        ax.legend(loc='best', fontsize=15)
+        plt.show()
+
+    else:
+        energy_diffs = []
+        x = []
+        for i, ml_energy in enumerate(ml_energies):
+            energy_diff = abs(ml_energy - dft_energies[i])
+            energy_diffs.append(energy_diff)
+            x.append(i)
+        
+        total_width = 0.75
+        width = total_width / len(x)
+
+        fig, ax = camus.utils.create_plot(xlabel='', ylabel=r'Energy difference [eV]', fontsize=18)
+        bar_diff = ax.bar(x, energy_diffs, width=width, color='royalblue', align='edge', edgecolor='black', linewidth=0.7, label="|E_DFT-E_ML|")
+
+        ax.tick_params(axis='y', direction='in', which='both', labelsize=15, length=8)
+        ax.tick_params(axis='y', which='minor', length=4)
+
+        ax.legend(handles=[bar_diff], loc='best', fontsize=15)
+        plt.show()
+
