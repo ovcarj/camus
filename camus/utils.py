@@ -31,6 +31,17 @@ def create_index_dict(input_list):
     return index_dict
 
 
+def find_cluster_center(cluster_dictionary_stransitions, target_calculation_label, target_index):
+    """ 
+    Intended to return the cluster center of the corresponding 
+    (calculation_label, neighbor_index) pair
+    """
+    for index, sublist in enumerate(cluster_dictionary_stransitions['cluster_neighbors']):
+        for item in sublist:
+            if item['calculation_label'] == target_calculation_label and item['index'] == target_index:
+                return cluster_dictionary_stransitions['cluster_centers'][index]
+
+
 def new_list():
     """
     Creates a new list.

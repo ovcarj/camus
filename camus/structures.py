@@ -1285,7 +1285,6 @@ class STransitions():
         # where `flags` is a list ['U_NBR', 'U_CTR', ... , 'N_D'] of length = # of transition structures
 
         self._uniqueness_dictionary = camus.utils.new_dict()
-        self._stopping_index = camus.utils.new_dict()
 
         for calculation_label in self.concatenated_map.keys():
             
@@ -1293,7 +1292,6 @@ class STransitions():
             initialize_list = ['I'] * no_of_structures
 
             self._uniqueness_dictionary[calculation_label] = initialize_list
-            self._stopping_index[calculation_label] = -1
 
         for orphan in self._cluster_dictionary_stransitions['orphans']:
             calculation_label, index = orphan.values()
@@ -1320,22 +1318,51 @@ class STransitions():
     def create_evaluation_dictionary(self):
         """
         Creates self._evaluation_dictionary for future evaluation against reference based on self._cluster_dictionary_stransitions and self._uniqueness_dictionary.
+        Possible status_list flags: `P` (pass/good structure), `W` (waiting for some other structure to be evaluated), `C` (goes into next batch of calculation), `B` (bad prediction), `T` (throw away)
         """
 
         if not hasattr(self, '_uniqueness_dictionary'):
             self.create_uniqueness_dictionary()
 
+        # Initial self._evaluation dictionary
+
         self._evaluation_dictionary = camus.utils.new_dict()
 
-        for calculation_label in self.concatenated_map.keys():
+        for calculation_label in self.stransitions.keys():
 
-            no_of_structures = len(self.concatenated_map[calculation_label])
-            initial_status_list = ['I'] * no_of_structures
+            no_of_structures = len(self.stransitions[calculation_label].transition_structures.structures)
+
+            uniqueness_dictionary = np.array(self._uniqueness_dictionary[calculation_label], dtype='str')
+            waiting_list = camus.utils.new_dict()
+            status_list = np.where(uniqueness_dictionary == 'N_D', 'P', 'I')
+
+            for i in range(no_of_structures):
+
+                uniqueness_flag = uniqueness_dictionary[i]
+
+                if uniqueness_flag == 'N_D':
+                    pass
+
+                elif uniqueness_flag == 'U_NBR':
+
+                    status_list[i] = 'W'
+
+                    # Find the corresponding cluster center
+
+                    cluster_center = camus.utils.find_cluster_center(self._cluster_dictionary_stransitions, calculation_label, i)
+                    waiting_list[str(i)] = cluster_center
+
+                    break
+
+                elif (uniqueness_flag == 'U_CTR' or uniqueness_flag == 'U_NBR'):
+
+                    status_list[i] = 'C'
+
+                    break
 
             self._evaluation_dictionary[calculation_label] = {
-                    'status_list': initial_status_list,
-                    'waiting_for': [None] * no_of_structures,
-                    'neighbor_of': [None] * no_of_structures
+                    'status_list': status_list,
+                    'waiting_for': waiting_list
                     }
 
 
