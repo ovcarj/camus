@@ -1354,7 +1354,7 @@ class STransitions():
 
                     break
 
-                elif (uniqueness_flag == 'U_CTR' or uniqueness_flag == 'U_NBR'):
+                elif (uniqueness_flag == 'U_CTR' or uniqueness_flag == 'U_ORP'):
 
                     status_list[i] = 'C'
 
