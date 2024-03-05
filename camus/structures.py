@@ -1058,7 +1058,7 @@ class STransitions():
         Concatenates all self.stransitions[*calc_label*].`structure_type`_structures into
         a single self.concatenated_structures object.
         Creates a dictionary {calc_label: [indices in self.concatenated_stransitions]} to self.concatenated_map.
-        Creates the inverse dictionary {index in self.concatenated_stransition: calc_label} for convenience to self.inverse_map.
+        Creates the inverse dictionary {index in self.concatenated_stransition: calc_label} for convenience to self.concatenated_map_inverse.
         
         `structure_type` can be ['transition', 'minima', 'saddlepoints'].
         """
@@ -1068,7 +1068,7 @@ class STransitions():
         calculation_labels = self.stransitions.keys()
 
         self.concatenated_map = {calculation_label: camus.utils.new_list for calculation_label in calculation_labels}
-        self.inverse_map = camus.utils.new_dict()
+        self.concatenated_map_inverse = camus.utils.new_dict()
 
         structure_counter = 0
         
@@ -1083,7 +1083,7 @@ class STransitions():
 
             for original_index, new_index in enumerate(indices):
 
-                self.inverse_map[new_index]= {'calculation_label': calculation_label, 'original_index': original_index}
+                self.concatenated_map_inverse[new_index]= {'calculation_label': calculation_label, 'original_index': original_index}
 
             concatenated_structures.append(structures)
 
@@ -1193,8 +1193,8 @@ class STransitions():
 
             for i, index in enumerate(self.concatenated_structures.structures_grouped_by_composition[composition]['indices']):
 
-                calculation_label = self.inverse_map[index]['calculation_label']
-                original_index = self.inverse_map[index]['original_index']
+                calculation_label = self.concatenated_map_inverse[index]['calculation_label']
+                original_index = self.concatenated_map_inverse[index]['original_index']
 
                 CR_similarity = self._CR_dictionary_composition[composition]['CR_similarity'][i]
                 maximum_similarity = self._CR_dictionary_composition[composition]['maximum_similarity'][i]
@@ -1238,7 +1238,7 @@ class STransitions():
         for composition in compositions:
 
             for cluster_center in self._cluster_dictionary_compositions[composition]['cluster_centers_indices']:
-                calculation_label, index_in_stransition = self.inverse_map[cluster_center].values()
+                calculation_label, index_in_stransition = self.concatenated_map_inverse[cluster_center].values()
                 all_cluster_centers.append({'calculation_label': calculation_label, 'index': index_in_stransition})
 
             for i, cluster_neighbors in enumerate(self._cluster_dictionary_compositions[composition]['cluster_neighbors_indices']):
@@ -1246,22 +1246,22 @@ class STransitions():
                 current_neighborlist = []
 
                 for cluster_neighbor in cluster_neighbors:
-                    calculation_label, index_in_stransition = self.inverse_map[cluster_neighbor].values()
+                    calculation_label, index_in_stransition = self.concatenated_map_inverse[cluster_neighbor].values()
                     current_neighborlist.append({'calculation_label': calculation_label, 'index': index_in_stransition})
 
                 all_cluster_neighborlists.append(current_neighborlist)
                 all_similarities.append(self._cluster_dictionary_compositions[composition]['cluster_neighbors_similarities'][i])
 
             for orphan in self._cluster_dictionary_compositions[composition]['orphans_indices']:
-                calculation_label, index_in_stransition = self.inverse_map[orphan].values()
+                calculation_label, index_in_stransition = self.concatenated_map_inverse[orphan].values()
                 all_orphans.append({'calculation_label': calculation_label, 'index': index_in_stransition})
 
             for prefiltered in self._cluster_dictionary_compositions[composition]['prefiltered_indices']:
-                calculation_label, index_in_stransition = self.inverse_map[prefiltered].values()
+                calculation_label, index_in_stransition = self.concatenated_map_inverse[prefiltered].values()
                 all_prefiltered.append({'calculation_label': calculation_label, 'index': index_in_stransition})
 
             for i, index in enumerate(self.concatenated_structures.structures_grouped_by_composition[composition]['indices']):
-                calculation_label, index_in_stransition = self.inverse_map[index].values()
+                calculation_label, index_in_stransition = self.concatenated_map_inverse[index].values()
                 similarity_flag = self._cluster_dictionary_compositions[composition]['similarity_result_flags'][i]
                 all_similarity_result_flags.append({'calculation_label': calculation_label, 'index': index_in_stransition, 'similarity_flag': similarity_flag})
 
@@ -1317,8 +1317,9 @@ class STransitions():
 
     def create_evaluation_dictionary(self):
         """
-        Creates self._evaluation_dictionary for future evaluation against reference based on self._cluster_dictionary_stransitions and self._uniqueness_dictionary.
+        Creates self._evaluation_dictionary of format (TODO: Write exact format) for future evaluation against reference based on self._cluster_dictionary_stransitions and self._uniqueness_dictionary.
         Possible status_list flags: `P` (pass/good structure), `W` (waiting for some other structure to be evaluated), `C` (goes into next batch of calculation), `B` (bad prediction), `T` (throw away)
+        Structure of `waiting_for`: `index of structure that's waiting for`: `{'calculation_label', index}`
         """
 
         if not hasattr(self, '_uniqueness_dictionary'):
@@ -1352,7 +1353,10 @@ class STransitions():
                     cluster_center = camus.utils.find_cluster_center(self._cluster_dictionary_stransitions, calculation_label, i)
                     waiting_list[str(i)] = cluster_center
 
-                    break
+                    if cluster_center['calculation_label'] == calculation_label:
+                        pass
+                    else:
+                        break
 
                 elif (uniqueness_flag == 'U_CTR' or uniqueness_flag == 'U_ORP'):
 
