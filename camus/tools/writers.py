@@ -293,6 +293,40 @@ class Writers:
             f.write(lammps_in_content)
 
 
+    def create_LAMMPS_calculation(self, input_structure, target_directory=None, specorder=None, atom_style='atomic'):
+        """
+        Writes all necessary files to perform a calculation with LAMMPS. lammps.in parameters are read from self.lammps_parameters.
+        If `target_directory` is not given, `$CAMUS_LAMMPS_MINIMIZATION_DIR` is used.
+        If self.lammps_parameters is an empty dictionary, default values for a LAMMPS minimization are generated.
+
+        Parameters:
+            input_structures: List of ASE Atoms object for which to write the LAMMPS data file
+            target_directory: directory in which to create the files for a LAMMPS minimization
+            specorder: order of atom types in which to write the LAMMPS data file
+            atom_style: LAMMPS atom style 
+
+        """
+
+        # Set the default target directory to LAMMPS_MINIMIZATION_DIR environment variable
+        if target_directory is None:
+            target_directory = os.environ.get('LAMMPS_MINIMIZATION_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and LAMMPS_MINIMIZATION_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Write the lammps.in file 
+        if not self.lammps_parameters:
+            self.set_lammps_parameters(minimization=True)
+        self.write_lammps_in(target_directory)
+
+        # Write the lammps.data file
+        write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
+                prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
+
+
     def set_sisyphus_parameters(self, **kwargs):
         """ Method that sets parameters to be written in sisyphus.sh to self._sisyphus_parameters dictionary.
 

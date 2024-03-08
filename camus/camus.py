@@ -450,44 +450,6 @@ class Camus:
         os.chdir(start_cwd)
 
 
-    def create_lammps_calculation(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
-        """
-        Writes all necessary files to perform a calculation with LAMMPS. lammps.in parameters are read from self.Cwriters.lammps_parameters.
-        If `input_structure` is not given, self.Cstructures.structures[0] is used.
-        If `target_directory` is not given, `$CAMUS_LAMMPS_MINIMIZATION_DIR` is used.
-        If self.Cwriters.lammps_parameters is an empty dictionary, default values for a LAMMPS minimization are generated.
-
-        Parameters:
-            input_structures: List of ASE Atoms object for which to write the LAMMPS data file
-            target_directory: directory in which to create the files for a LAMMPS minimization
-            specorder: order of atom types in which to write the LAMMPS data file
-            atom_style: LAMMPS atom style 
-
-        """
-
-        # Set the default input_structure to self.Cstructures.structures[0]
-        if input_structure is None:
-            input_structure = self.Cstructures.structures[0]
-
-        # Set the default target directory to LAMMPS_MINIMIZATION_DIR environment variable
-        if target_directory is None:
-            target_directory = os.environ.get('LAMMPS_MINIMIZATION_DIR')
-            if target_directory is None:
-                raise ValueError("Target directory not specified and LAMMPS_MINIMIZATION_DIR environment variable is not set.")
-
-        # Create target directory if it does not exist
-        if not os.path.exists(target_directory):
-            os.makedirs(target_directory)
-
-        # Write the lammps.in file 
-        if not self.Cwriters.lammps_parameters:
-            self.Cwriters.set_lammps_parameters(minimization=True)
-        self.Cwriters.write_lammps_in(target_directory)
-
-        # Write the lammps.data file
-        write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
-                prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
-
 
     def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
             input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic', 
@@ -533,7 +495,7 @@ class Camus:
             target_directory = os.path.join(base_directory, f'{prefix}_{i}')
 
             if calculation_type == 'LAMMPS':
-                self.create_lammps_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
+                self.Cwriters.create_LAMMPS_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, atom_style=atom_style)
 
             elif calculation_type == 'VASP':
                 
