@@ -23,6 +23,7 @@ from camus.sisyphus import Sisyphus
 from camus.stransition import STransition
 from camus.stransitions import STransitions
 from camus.tools.utils import save_to_pickle, load_pickle
+from camus.tools.writers import write_lammps_data
 
 scheduler_module = importlib.import_module('camus.scheduler')
 dft_module = importlib.import_module('camus.dft')
@@ -128,7 +129,8 @@ class Camus:
         self.Csisyphus.write_lammps_in(target_directory)
 
         # Write the lammps.data file
-        self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
+        write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
+                prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
         # Write the Sisyphus bash script 
         if not self.Csisyphus.sisyphus_parameters:
@@ -486,7 +488,8 @@ class Camus:
         self.Csisyphus.write_lammps_in(target_directory)
 
         # Write the lammps.data file
-        self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
+        write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
+                prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
 
     def create_vasp_calculation(self, specorder, input_structure=None, target_directory=None, path_to_potcar=None):
