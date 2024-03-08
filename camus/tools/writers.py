@@ -9,6 +9,7 @@ import os
 from ase import Atoms
 from ase.io import write
 
+from camus.structures import Structures
 
 class Writers:
 
@@ -484,3 +485,28 @@ def write_lammps_data(input_structures, target_directory=None, prefixes='auto', 
 
             with open(file_name, 'w') as f:
                 f.writelines(lines)
+
+    
+def write_POSCAR(input_structure, specorder, target_directory=None):
+    """ Writes a standard VASP input structure file (POSCAR), using an ASE Atoms object `input_structure`.
+    The desired `specorder` (e.g. a list ['Br', 'I', 'Cs', 'Pb'] must be given to ensure 
+    that the atomic species are reordered as in a POTCAR file.
+    'target_directory' If not specified, `target_directory` defaults to the environment variable '$CAMUS_DFT_DIR'.
+    
+    """
+
+    # Set default target_directory 
+    if target_directory is None:
+        target_directory = os.environ.get('CAMUS_DFT_DIR')
+        if target_directory is None:
+            raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
+
+    # Create target directory if it does not exist
+    if not os.path.exists(target_directory):
+        os.makedirs(target_directory)
+
+    # Reorder atoms
+    sorted_atoms = Structures().sort_atoms(input_structure=input_structure, specorder=specorder) 
+
+    # Write the POSCAR file to the target directory
+    write(os.path.join(target_directory, 'POSCAR'), input_structure, format='vasp')

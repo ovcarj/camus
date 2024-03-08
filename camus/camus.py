@@ -22,7 +22,7 @@ from camus.structures import Structures
 from camus.stransition import STransition
 from camus.stransitions import STransitions
 from camus.tools.utils import save_to_pickle, load_pickle
-from camus.tools.writers import Writers, write_lammps_data
+from camus.tools.writers import Writers, write_lammps_data, write_POSCAR
 from camus.tools.parsers import parse_lammps_dump, parse_sisyphus_xyz
 
 scheduler_module = importlib.import_module('camus.scheduler')
@@ -494,7 +494,7 @@ class Camus:
 
     def create_vasp_calculation(self, specorder, input_structure=None, target_directory=None, path_to_potcar=None):
         """
-        Writes all files necessary for a DFT (VASP) calculation (save for POSCAR which is created with Cdft.write_POSCAR)
+        Writes all files necessary for a DFT (VASP) calculation (save for POSCAR which is created with write_POSCAR())
         If `target_directory` is not given, `$CAMUS_DFT_DIR` is used.
         If `path_to_potcar` is not provided, default POTCAR at `(...)` is used. 
 
@@ -530,7 +530,7 @@ class Camus:
             f.write(incar_content)
         
         # Write POSCAR file to target directory
-        self.Cdft.write_POSCAR(input_structure=input_structure, target_directory=target_directory, specorder=specorder)
+        write_POSCAR(input_structure=input_structure, target_directory=target_directory, specorder=specorder)
 
         # The path to POTCAR
         if path_to_potcar is None:
