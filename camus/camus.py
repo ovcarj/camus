@@ -72,69 +72,6 @@ class Camus:
         self.Cstructures.transitions = []
 
 
-    def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters=None, specorder=None, atom_style='atomic'):
-        """
-        Writes all necessary files to start a Sisyphus calculation for an `input_structure` to a `target_directory`.
-        If `input_structure` is not given, self.Cstructures.structures[0] is used.
-        If `target_directory` is not given, `$CAMUS_SISYPHUS_DATA_DIR` is used
-        If self.Cwriters.{artn_parameters, lammps_parameters, sisyphus_parameters} is an empty dictionary, default values are generated. The provided lammps parameters should be the ones for the main lammps.in input file used by ARTn.
-        If initial_lammps_parameters is an empty dictionary, a default initial_lammps.in file is generated. 
-
-        Parameters:
-            input_structure: ASE Atoms object for which to write the LAMMPS data file
-            target_directory: directory in which to create the Sisyphus calculation
-            initial_lammps_parameters: dictionary with the contents of the LAMMPS input file for the initial PE calculation
-            specorder: order of atom types in which to write the LAMMPS data file
-            atom_style: LAMMPS atom style 
-
-        """
-
-        # Set the default input_structure to self.Cstructures.structures[0]
-        if input_structure is None:
-            input_structure = self.Cstructures.structures[0]
-
-        # Set the default target directory to CAMUS_SISYPHUS_DATA_DIR environment variable
-        if target_directory is None:
-            target_directory = os.environ.get('CAMUS_SISYPHUS_DATA_DIR')
-            if target_directory is None:
-                raise ValueError("Target directory not specified and CAMUS_SISYPHUS_DATA_DIR environment variable is not set.")
-
-        # Create target directory if it does not exist
-        if not os.path.exists(target_directory):
-            os.makedirs(target_directory)
- 
-        # Write artn.in file
-        if not self.Cwriters.artn_parameters:
-            self.Cwriters.set_artn_parameters()
-        self.Cwriters.write_artn_in(target_directory=target_directory)
-
-        # Set initial_lammps_parameters 
-        if initial_lammps_parameters is not None:
-            self.initial_lammps_parameters = initial_lammps_parameters
-        else:
-            self.initial_lammps_parameters = {}
- 
-        # Write initial_lammps.in file for PE calculation
-        initial_sisyphus_ins = Writers(lammps_parameters=initial_lammps_parameters)
-        if not initial_sisyphus_ins.lammps_parameters:
-            initial_sisyphus_ins.set_lammps_parameters(initial_sisyphus=True)
-        initial_sisyphus_ins.write_lammps_in(target_directory=target_directory, filename='initial_lammps.in')
-
-        # Write the main lammps.in file used by ARTn
-        if not self.Cwriters.lammps_parameters:
-            self.Cwriters.set_lammps_parameters()
-        self.Cwriters.write_lammps_in(target_directory)
-
-        # Write the lammps.data file
-        write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
-                prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
-
-        # Write the Sisyphus bash script 
-        if not self.Cwriters.sisyphus_parameters:
-            self.Cwriters.set_sisyphus_parameters()
-        self.Cwriters.write_sisyphus_script(target_directory=target_directory)
-
-
     def create_batch_sisyphus(self, base_directory, specorder, input_structures=None, prefix='sis',
             transition_minimum=0.1, transition_maximum=1.0, transition_step=0.1, delta_e_maximum=0.1, calcs_per_parameters=1, 
             schedule=True, run_command='bash sisyphus.sh ', job_filename='sub.sh', initial_lammps_parameters=None, atom_style='atomic'):
@@ -450,7 +387,6 @@ class Camus:
         os.chdir(start_cwd)
 
 
-
     def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
             input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic', 
             path_to_potcar=None, from_eval_dict=False, path_to_eval_dict=None):
@@ -722,6 +658,6 @@ class Camus:
 
         """
 
-        self.CSTransitions = STransitions(sisyphus_dictionary=sisyphus_dictionary, base_directory=base_directory, sisyphus_dictionary_path=sisyphus_dictionary_path,
+        self.Cstransitions = STransitions(sisyphus_dictionary=sisyphus_dictionary, base_directory=base_directory, sisyphus_dictionary_path=sisyphus_dictionary_path,
             sisyphus_analysis_directory=sisyphus_analysis_directory, save_analysis=False, **kwargs)
 

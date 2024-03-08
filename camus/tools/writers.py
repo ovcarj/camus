@@ -476,6 +476,63 @@ Delta_E_final_initial=$(echo "$E_final - $E_initial" | bc -l)
 echo "MSG_END: E_initial = $E_initial    E_top = $E_top    E_final = $E_final" >> $SISYPHUS_LOG_FILE
 echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top = $Delta_E_final_top    Delta_E_final_initial = $Delta_E_final_initial" >> $SISYPHUS_LOG_FILE""")
 
+    def create_sisyphus_calculation(self, input_structure, target_directory=None, initial_lammps_parameters=None, specorder=None, atom_style='atomic'):
+        """
+        Writes all necessary files to start a Sisyphus calculation for an `input_structure` to a `target_directory`.
+        If `target_directory` is not given, `$CAMUS_SISYPHUS_DATA_DIR` is used
+        If self.{artn_parameters, lammps_parameters, sisyphus_parameters} is an empty dictionary, default values are generated. The provided lammps parameters should be the ones for the main lammps.in input file used by ARTn.
+        If initial_lammps_parameters is an empty dictionary, a default initial_lammps.in file is generated. 
+
+        Parameters:
+            input_structure: ASE Atoms object for which to write the LAMMPS data file
+            target_directory: directory in which to create the Sisyphus calculation
+            initial_lammps_parameters: dictionary with the contents of the LAMMPS input file for the initial PE calculation
+            specorder: order of atom types in which to write the LAMMPS data file
+            atom_style: LAMMPS atom style 
+
+        """
+
+        # Set the default target directory to CAMUS_SISYPHUS_DATA_DIR environment variable
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_SISYPHUS_DATA_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_SISYPHUS_DATA_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+ 
+        # Write artn.in file
+        if not self.artn_parameters:
+            self.set_artn_parameters()
+        self.write_artn_in(target_directory=target_directory)
+
+        # Set initial_lammps_parameters 
+        if initial_lammps_parameters is not None:
+            self.initial_lammps_parameters = initial_lammps_parameters
+        else:
+            self.initial_lammps_parameters = {}
+ 
+        # Write initial_lammps.in file for PE calculation
+        initial_sisyphus_ins = Writers(lammps_parameters=initial_lammps_parameters)
+        if not initial_sisyphus_ins.lammps_parameters:
+            initial_sisyphus_ins.set_lammps_parameters(initial_sisyphus=True)
+        initial_sisyphus_ins.write_lammps_in(target_directory=target_directory, filename='initial_lammps.in')
+
+        # Write the main lammps.in file used by ARTn
+        if not self.lammps_parameters:
+            self.set_lammps_parameters()
+        self.write_lammps_in(target_directory)
+
+        # Write the lammps.data file
+        write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
+                prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
+
+        # Write the Sisyphus bash script 
+        if not self.sisyphus_parameters:
+            self.set_sisyphus_parameters()
+        self.write_sisyphus_script(target_directory=target_directory)
+
 
     def set_dft_parameters(self, **kwargs):
 
