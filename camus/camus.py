@@ -19,11 +19,10 @@ from ase import Atoms
 from ase.io import write, read
 
 from camus.structures import Structures
-from camus.sisyphus import Sisyphus
 from camus.stransition import STransition
 from camus.stransitions import STransitions
 from camus.tools.utils import save_to_pickle, load_pickle
-from camus.tools.writers import write_lammps_data
+from camus.tools.writers import Writers, write_lammps_data
 from camus.tools.parsers import parse_lammps_dump, parse_sisyphus_xyz
 
 scheduler_module = importlib.import_module('camus.scheduler')
@@ -61,7 +60,7 @@ class Camus:
             self._sisyphus_parameters = {}
 
         self.Cstructures = Structures(structures=structures)
-        self.Csisyphus = Sisyphus(artn_parameters, lammps_parameters, sisyphus_parameters)
+        self.Cwriters = Writers(artn_parameters, lammps_parameters, sisyphus_parameters)
 
         scheduler_class = getattr(scheduler_module, scheduler)
         self.Cscheduler = scheduler_class()
@@ -81,7 +80,7 @@ class Camus:
         Writes all necessary files to start a Sisyphus calculation for an `input_structure` to a `target_directory`.
         If `input_structure` is not given, self.Cstructures.structures[0] is used.
         If `target_directory` is not given, `$CAMUS_SISYPHUS_DATA_DIR` is used
-        If self.Csisyphus.{artn_parameters, lammps_parameters, sisyphus_parameters} is an empty dictionary, default values are generated. The provided lammps parameters should be the ones for the main lammps.in input file used by ARTn.
+        If self.Cwriters.{artn_parameters, lammps_parameters, sisyphus_parameters} is an empty dictionary, default values are generated. The provided lammps parameters should be the ones for the main lammps.in input file used by ARTn.
         If initial_lammps_parameters is an empty dictionary, a default initial_lammps.in file is generated. 
 
         Parameters:
@@ -108,9 +107,9 @@ class Camus:
             os.makedirs(target_directory)
  
         # Write artn.in file
-        if not self.Csisyphus.artn_parameters:
-            self.Csisyphus.set_artn_parameters()
-        self.Csisyphus.write_artn_in(target_directory=target_directory)
+        if not self.Cwriters.artn_parameters:
+            self.Cwriters.set_artn_parameters()
+        self.Cwriters.write_artn_in(target_directory=target_directory)
 
         # Set initial_lammps_parameters 
         if initial_lammps_parameters is not None:
@@ -119,24 +118,24 @@ class Camus:
             self.initial_lammps_parameters = {}
  
         # Write initial_lammps.in file for PE calculation
-        initial_sisyphus_ins = Sisyphus(lammps_parameters=initial_lammps_parameters)
+        initial_sisyphus_ins = Writers(lammps_parameters=initial_lammps_parameters)
         if not initial_sisyphus_ins.lammps_parameters:
             initial_sisyphus_ins.set_lammps_parameters(initial_sisyphus=True)
         initial_sisyphus_ins.write_lammps_in(target_directory=target_directory, filename='initial_lammps.in')
 
         # Write the main lammps.in file used by ARTn
-        if not self.Csisyphus.lammps_parameters:
-            self.Csisyphus.set_lammps_parameters()
-        self.Csisyphus.write_lammps_in(target_directory)
+        if not self.Cwriters.lammps_parameters:
+            self.Cwriters.set_lammps_parameters()
+        self.Cwriters.write_lammps_in(target_directory)
 
         # Write the lammps.data file
         write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
                 prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
         # Write the Sisyphus bash script 
-        if not self.Csisyphus.sisyphus_parameters:
-            self.Csisyphus.set_sisyphus_parameters()
-        self.Csisyphus.write_sisyphus_script(target_directory=target_directory)
+        if not self.Cwriters.sisyphus_parameters:
+            self.Cwriters.set_sisyphus_parameters()
+        self.Cwriters.write_sisyphus_script(target_directory=target_directory)
 
 
     def create_batch_sisyphus(self, base_directory, specorder, input_structures=None, prefix='sis',
@@ -186,9 +185,9 @@ class Camus:
         # Generate list of transition_energies
         transition_energies = np.arange(transition_minimum, transition_maximum, step=transition_step)
 
-        # Initialize self.Csisyphus.sisyphus_parameters
-        if not self.Csisyphus.sisyphus_parameters:
-            self.Csisyphus.set_sisyphus_parameters()
+        # Initialize self.Cwriters.sisyphus_parameters
+        if not self.Cwriters.sisyphus_parameters:
+            self.Cwriters.set_sisyphus_parameters()
 
         # Create batch Sisyphus calculations
         for structure_index, structure in enumerate(input_structures):
@@ -201,8 +200,8 @@ class Camus:
                 for de_index, delta_e_final in enumerate(delta_e_finals):
                     
                     # Set Sisyphus parameters
-                    self.Csisyphus.sisyphus_parameters['dE_initial_threshold'] = str(transition_energy)
-                    self.Csisyphus.sisyphus_parameters['dE_final_threshold'] = str(delta_e_final)
+                    self.Cwriters.sisyphus_parameters['dE_initial_threshold'] = str(transition_energy)
+                    self.Cwriters.sisyphus_parameters['dE_final_threshold'] = str(delta_e_final)
 
                     for calculation in range(calcs_per_parameters):
 
@@ -456,10 +455,10 @@ class Camus:
 
     def create_lammps_calculation(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
         """
-        Writes all necessary files to perform a calculation with LAMMPS. lammps.in parameters are read from self.Csisyphus.lammps_parameters.
+        Writes all necessary files to perform a calculation with LAMMPS. lammps.in parameters are read from self.Cwriters.lammps_parameters.
         If `input_structure` is not given, self.Cstructures.structures[0] is used.
         If `target_directory` is not given, `$CAMUS_LAMMPS_MINIMIZATION_DIR` is used.
-        If self.Csisyphus.lammps_parameters is an empty dictionary, default values for a LAMMPS minimization are generated.
+        If self.Cwriters.lammps_parameters is an empty dictionary, default values for a LAMMPS minimization are generated.
 
         Parameters:
             input_structures: List of ASE Atoms object for which to write the LAMMPS data file
@@ -484,9 +483,9 @@ class Camus:
             os.makedirs(target_directory)
 
         # Write the lammps.in file 
-        if not self.Csisyphus.lammps_parameters:
-            self.Csisyphus.set_lammps_parameters(minimization=True)
-        self.Csisyphus.write_lammps_in(target_directory)
+        if not self.Cwriters.lammps_parameters:
+            self.Cwriters.set_lammps_parameters(minimization=True)
+        self.Cwriters.write_lammps_in(target_directory)
 
         # Write the lammps.data file
         write_lammps_data(input_structures=input_structure, target_directory=target_directory, 
@@ -552,7 +551,7 @@ class Camus:
         Creates a number of `input_structures` directories in `base_directory` with the names
         `prefix`_(# of structure) that contains all files necessary to perform a calculation of type `calculation_type`.
         If `input_structures` is not given, self.Cstructures.structures is used.
-        Parameters for lammps.in are read from self.Csisyphus.lammps_parameters (defaults to a minimization).
+        Parameters for lammps.in are read from self.Cwriters.lammps_parameters (defaults to a minimization).
  
         Parameters:
             base_directory: directory in which to create the directories for LAMMPS minimizations

@@ -7,7 +7,7 @@ Parsers of various output files.
 import numpy as np
 
 from ase import Atoms
-from ase.io import read_lammps_dump
+from ase.io.lammpsrun import read_lammps_dump
 from ase.calculators.singlepoint import SinglePointCalculator
 
 

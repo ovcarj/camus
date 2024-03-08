@@ -59,19 +59,19 @@ lmp_input_dict = {
         'compute': 'cpe all pe',
         }
 
-camus_object.Csisyphus.set_lammps_parameters(input_parameters=lmp_input_dict)
-camus_object.Csisyphus.write_lammps_in(filename='test_nonstd_lmp.in')
+camus_object.Cwriters.set_lammps_parameters(input_parameters=lmp_input_dict)
+camus_object.Cwriters.write_lammps_in(filename='test_nonstd_lmp.in')
 
 print('Wrote non-standard LAMMPS input to $CAMUS_LAMMPS_DATA_DIR.')
 
-camus_object.Csisyphus.lammps_parameters = {}
+camus_object.Cwriters.lammps_parameters = {}
 
 sisyphus_test_directory = os.path.join(os.environ.get('CAMUS_SISYPHUS_DATA_DIR'), 'sisyphus_test_dir')
 camus_object.create_sisyphus_calculation(target_directory=sisyphus_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
 
 print(f'Created files for a Sisyphus calculation in {sisyphus_test_directory}')
 
-camus_object.Csisyphus.lammps_parameters = {}
+camus_object.Cwriters.lammps_parameters = {}
 batch_minimization_test_directory = os.path.join(os.environ.get('CAMUS_LAMMPS_MINIMIZATION_DIR'), 'batch_minimization_test_dir')
 camus_object.create_batch_calculation(base_directory=batch_minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'], calculation_type='LAMMPS', atom_style='charge')
 
