@@ -26,13 +26,12 @@ from camus.tools.writers import Writers, write_lammps_data, write_POSCAR
 from camus.tools.parsers import parse_lammps_dump, parse_sisyphus_xyz
 
 scheduler_module = importlib.import_module('camus.scheduler')
-dft_module = importlib.import_module('camus.dft')
 
 
 class Camus:
 
     def __init__(self, structures=None, artn_parameters=None, lammps_parameters=None, sisyphus_parameters=None,
-            scheduler='Slurm', dft='VASP'):
+            scheduler='Slurm', dft_engine='VASP'):
         """
         Initializes a new Camus object, whose attributes `self.Cname` are instances of `name` classes.
         The methods in this class should allow an interface between the `name` classes.
@@ -60,13 +59,11 @@ class Camus:
             self._sisyphus_parameters = {}
 
         self.Cstructures = Structures(structures=structures)
-        self.Cwriters = Writers(artn_parameters, lammps_parameters, sisyphus_parameters)
+        self.Cwriters = Writers(artn_parameters, lammps_parameters, 
+                sisyphus_parameters, dft_engine)
 
         scheduler_class = getattr(scheduler_module, scheduler)
         self.Cscheduler = scheduler_class()
-
-        dft_class = getattr(dft_module, dft)
-        self.Cdft = dft_class()
 
         # Initialize self.sisyphus_dictionary which will contain all information on the batch Sisyphus calculations
         self.sisyphus_dictionary = {}
@@ -515,14 +512,14 @@ class Camus:
             os.makedirs(target_directory)
 
         # Set parameters if the user didn't set them explicitly beforehand
-        if not self.Cdft.dft_parameters:
-            self.Cdft.set_dft_parameters()
+        if not self.Cwriters.dft_parameters:
+            self.Cwriters.set_dft_parameters()
 
         # Define the INCAR file content
         incar_content = "#DFT_PARAMETERS\n"
-        for key, value in self.Cdft.dft_parameters.items():
+        for key, value in self.Cwriters.dft_parameters.items():
             if value is not None:
-                incar_content += f"  {key} = {self.Cdft._dft_parameters[key]}\n"
+                incar_content += f"  {key} = {self.Cwriters._dft_parameters[key]}\n"
         incar_content += "/\n"
 
         # Write the INCAR file to the target directory

@@ -14,9 +14,9 @@ from camus.structures import Structures
 class Writers:
 
     def __init__(self, artn_parameters=None, lammps_parameters=None,
-            sisyphus_parameters=None):
+            sisyphus_parameters=None, dft_engine='VASP'):
         """
-        Initializes a new Writers object.
+        Initializes a new Writers object. Writes ARTn, LAMMPS, Sisyphus and DFT inputs.
 
         Parameters:
             parameter: parameter description placeholder.
@@ -36,6 +36,10 @@ class Writers:
             self._sisyphus_parameters = sisyphus_parameters
         else:
             self._sisyphus_parameters = {}  
+
+        self.dft_engine = dft_engine
+
+    # Keep all these property definitions like this for now
 
     @property
     def artn_parameters(self):
@@ -75,6 +79,19 @@ class Writers:
     @sisyphus_parameters.deleter
     def sisyphus_parameters(self):
         del self._sisyphus_parameters
+
+    @property
+    def dft_parameters(self):
+        return self._dft_parameters
+
+    @dft_parameters.setter
+    def dft_parameters(self, new_dft_parameters):
+        self._dft_parameters = {} # Probably makes more sense this way...
+        self._dft_parameters = new_dft_parameters
+
+    @dft_parameters.deleter
+    def dft_parameters(self):
+        del self._dft_parameters
 
 
     def set_artn_parameters(self, **kwargs):
@@ -423,6 +440,48 @@ Delta_E_final_initial=$(echo "$E_final - $E_initial" | bc -l)
 
 echo "MSG_END: E_initial = $E_initial    E_top = $E_top    E_final = $E_final" >> $SISYPHUS_LOG_FILE
 echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top = $Delta_E_final_top    Delta_E_final_initial = $Delta_E_final_initial" >> $SISYPHUS_LOG_FILE""")
+
+    def set_dft_parameters(self, **kwargs):
+
+        if self.dft_engine == 'VASP':
+            self.set_VASP_parameters(**kwargs)
+
+        else:
+            raise NotImplementedError(f'DFT engine {self.dft_engine} not implemented.')
+
+    def set_VASP_parameters(self, **kwargs):
+        """ 
+        Method that sets parameters to be written in the 
+        INCAR file to self._dft_parameters dictionary.
+        
+        """
+       
+        default_parameters= {
+            'SPACING': 0.25,
+            'EDIFF': '1E-6',
+            'ENCUT': 230,
+            'ISMEAR': 0,
+            'SIGMA': 0.05,
+            'PREC': 'Accurate',
+            'ALGO': 'Normal',
+            'NELMIN': 6,
+            'ISYM': 0,
+            'LREAL': 'Auto',
+            'LWAVE': '.FALSE.',
+            'LCHARGE': '.FALSE.',
+            'NCORE': 8,
+            'METAGGA': 'R2SCAN',
+            'LASPH': '.TRUE.',
+            'LMIXTAU': '.TRUE.'
+            }
+
+        for key in kwargs:
+            if key not in default_parameters:
+                raise RuntimeError('Unknown keyword: %s' % key)
+
+        # Set self._dft_parameters
+        for key, value in default_parameters.items():
+            self._dft_parameters[key] = kwargs.pop(key, value)
 
 
 def write_lammps_data(input_structures, target_directory=None, prefixes='auto', specorder=None, write_masses=True,
