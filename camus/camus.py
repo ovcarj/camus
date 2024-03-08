@@ -24,6 +24,7 @@ from camus.stransition import STransition
 from camus.stransitions import STransitions
 from camus.tools.utils import save_to_pickle, load_pickle
 from camus.tools.writers import write_lammps_data
+from camus.tools.parsers import parse_lammps_dump, parse_sisyphus_xyz
 
 scheduler_module = importlib.import_module('camus.scheduler')
 dft_module = importlib.import_module('camus.dft')
@@ -407,11 +408,11 @@ class Camus:
                         self.sisyphus_dictionary[f'{calculation_label}']['basin_counters'] = np.frombuffer(np.loadtxt(basin_counters_file))
                     
                         for i, minimum_filename in enumerate(minima_files):
-                            minimum_atoms = self.Cstructures.parse_sisyphus_xyz(filename=minimum_filename, specorder=specorder)
+                            minimum_atoms = parse_sisyphus_xyz(filename=minimum_filename, specorder=specorder)
                             self.sisyphus_dictionary[f'{calculation_label}']['minima_structures'].append(minimum_atoms)
 
                         for i, saddlepoint_filename in enumerate(saddlepoint_files):
-                            saddlepoint_atoms = self.Cstructures.parse_sisyphus_xyz(filename=saddlepoint_filename, specorder=specorder)
+                            saddlepoint_atoms = parse_sisyphus_xyz(filename=saddlepoint_filename, specorder=specorder)
                             self.sisyphus_dictionary[f'{calculation_label}']['saddlepoints_structures'].append(saddlepoint_atoms)
 
                         # Combine minima and saddlepoints to transitions
