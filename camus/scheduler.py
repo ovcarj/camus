@@ -12,7 +12,7 @@ import glob
 
 from abc import ABC, abstractmethod
 
-from camus.utils import save_to_pickle, load_pickle
+from camus.tools.utils import save_to_pickle, load_pickle
 
 class Scheduler(ABC):
 

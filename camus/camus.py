@@ -20,10 +20,13 @@ from ase.io import write, read
 
 from camus.structures import Structures
 from camus.sisyphus import Sisyphus
-from camus.utils import save_to_pickle, load_pickle
+from camus.stransition import STransition
+from camus.stransitions import STransitions
+from camus.tools.utils import save_to_pickle, load_pickle
 
 scheduler_module = importlib.import_module('camus.scheduler')
 dft_module = importlib.import_module('camus.dft')
+
 
 class Camus:
 
@@ -69,6 +72,7 @@ class Camus:
 
         # Initialize self.Cstructures.transitions for batch Sisyphus calculations
         self.Cstructures.transitions = []
+
 
     def create_sisyphus_calculation(self, input_structure=None, target_directory=None, initial_lammps_parameters=None, specorder=None, atom_style='atomic'):
         """
@@ -130,6 +134,7 @@ class Camus:
         if not self.Csisyphus.sisyphus_parameters:
             self.Csisyphus.set_sisyphus_parameters()
         self.Csisyphus.write_sisyphus_script(target_directory=target_directory)
+
 
     def create_batch_sisyphus(self, base_directory, specorder, input_structures=None, prefix='sis',
             transition_minimum=0.1, transition_maximum=1.0, transition_step=0.1, delta_e_maximum=0.1, calcs_per_parameters=1, 
@@ -208,6 +213,7 @@ class Camus:
                             self.Cscheduler.set_scheduler_parameters(run_command=run_command)
                             self.Cscheduler.write_submission_script(target_directory=target_directory, filename=job_filename)
 
+
     def run_batch_sisyphus(self, base_directory, specorder, prefix='sis', job_filename='sub.sh'):
         """
         Intended to be used in conjuction with create_batch_sisyphus.
@@ -251,6 +257,7 @@ class Camus:
         save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
         os.chdir(start_cwd)
+
 
     def parse_batch_sisyphus(self, base_directory, jobs_info, specorder, prefix='sis', write_all_transitions=True, write_ms_explicitly=False, write_pass_fail=False):
         """
@@ -443,6 +450,7 @@ class Camus:
         save_to_pickle(self.sisyphus_dictionary, os.path.join(f'{base_directory}', 'sisyphus_dictionary.pkl'))
         os.chdir(start_cwd)
 
+
     def create_lammps_calculation(self, input_structure=None, target_directory=None, specorder=None, atom_style='atomic'):
         """
         Writes all necessary files to perform a calculation with LAMMPS. lammps.in parameters are read from self.Csisyphus.lammps_parameters.
@@ -479,6 +487,7 @@ class Camus:
 
         # Write the lammps.data file
         self.Cstructures.write_lammps_data(target_directory=target_directory, input_structures=input_structure, prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
+
 
     def create_vasp_calculation(self, specorder, input_structure=None, target_directory=None, path_to_potcar=None):
         """
@@ -529,6 +538,7 @@ class Camus:
             shutil.copy(path_to_potcar, target_directory)
         except:
             raise Exception("POTCAR file required by VASP was not found.")
+
 
     def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
             input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic', 
@@ -700,6 +710,7 @@ class Camus:
 
         save_to_pickle(self.Cscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
+
     def parse_batch_lammps(self, specorder, jobs_info, calculation_type, results_structure_filename=None):
         """
         Parses finished LAMMPS calculations in directories given by `jobs_info` dictionary. Only `calculation_type`=='LAMMPS_minimization' is implemented for now.
@@ -728,6 +739,7 @@ class Camus:
 
                 else:
                     raise Exception(f"Calculation type {calculation_type} not implemented.")
+
 
     def parse_batch_vasp(self, jobs_info, calculation_type, path_to_eval_dict=None, from_eval_dict=True):
         """
@@ -777,4 +789,28 @@ class Camus:
 
                 if from_eval_dict:
                     save_to_pickle(eval_dictionary, path_to_eval_dict)
+
+
+    def initialize_STransitions(self, sisyphus_dictionary=None, base_directory=None, sisyphus_dictionary_path=None,
+            sisyphus_analysis_directory=None, save_analysis=False, **kwargs):
+        """
+        Initializes an STransitions() instance to self.CSTransitions. For now, the documentation for STransitions()
+        is copied below.
+
+        Initializes a new STransitions object which stores and analyzes all information from all Sisyphus calculations in a `sisyphus_dictionary.pkl`.
+        Analysis can be saved to `sisyphus_analysis_directory` if `save_analysis` == True.
+
+        `sisyphus_dictionary` should be the loaded `sisyphus_dictionary.pkl`.
+
+        If `stransitions_pickle` is not given, `sisyphus_dictionary.pkl` is tried to be read from `sisyphus_dictionary_path`.
+        f `sisyphus_dictionary_path` is not given, `sisyphus_dictionary.pkl` is searched for in `base_directory`.
+        If `base_directory` is not given, CWD is assumed.
+
+        Parameters:
+            to_be_written (TODO): TODO.
+
+        """
+
+        self.CSTransitions = STransitions(sisyphus_dictionary=sisyphus_dictionary, base_directory=base_directory, sisyphus_dictionary_path=sisyphus_dictionary_path,
+            sisyphus_analysis_directory=sisyphus_analysis_directory, save_analysis=False, **kwargs)
 
