@@ -292,6 +292,7 @@ class Writers:
         with open(os.path.join(target_directory, filename), 'w') as f:
             f.write(lammps_in_content)
 
+
     def set_sisyphus_parameters(self, **kwargs):
         """ Method that sets parameters to be written in sisyphus.sh to self._sisyphus_parameters dictionary.
 
@@ -441,6 +442,7 @@ Delta_E_final_initial=$(echo "$E_final - $E_initial" | bc -l)
 echo "MSG_END: E_initial = $E_initial    E_top = $E_top    E_final = $E_final" >> $SISYPHUS_LOG_FILE
 echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top = $Delta_E_final_top    Delta_E_final_initial = $Delta_E_final_initial" >> $SISYPHUS_LOG_FILE""")
 
+
     def set_dft_parameters(self, **kwargs):
 
         if self.dft_engine == 'VASP':
@@ -448,6 +450,7 @@ echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top
 
         else:
             raise NotImplementedError(f'DFT engine {self.dft_engine} not implemented.')
+
 
     def set_VASP_parameters(self, **kwargs):
         """ 
@@ -482,6 +485,62 @@ echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top
         # Set self._dft_parameters
         for key, value in default_parameters.items():
             self._dft_parameters[key] = kwargs.pop(key, value)
+
+
+    def create_dft_calculation(self, **kwargs):
+
+        if self.dft_engine == 'VASP':
+            self.create_VASP_calculation(**kwargs)
+
+        else:
+            raise NotImplementedError(f'DFT engine {self.dft_engine} not implemented.')
+
+
+    def create_VASP_calculation(self, input_structure, specorder, target_directory=None, path_to_potcar=None):
+        """
+        Writes all files necessary for a DFT (VASP) calculation (save for POSCAR which is created with write_POSCAR())
+        If `target_directory` is not given, `$CAMUS_DFT_DIR` is used.
+        If `path_to_potcar` is not provided, default POTCAR at `(...)` is used. 
+
+        """
+
+        # Set default target_directory 
+        if target_directory is None:
+            target_directory = os.environ.get('CAMUS_DFT_DIR')
+            if target_directory is None:
+                raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
+
+        # Create target directory if it does not exist
+        if not os.path.exists(target_directory):
+            os.makedirs(target_directory)
+
+        # Set parameters if the user didn't set them explicitly beforehand
+        if not self.dft_parameters:
+            self.set_dft_parameters()
+
+        # Define the INCAR file content
+        incar_content = "#DFT_PARAMETERS\n"
+        for key, value in self.dft_parameters.items():
+            if value is not None:
+                incar_content += f"  {key} = {self.dft_parameters[key]}\n"
+        incar_content += "/\n"
+
+        # Write the INCAR file to the target directory
+        with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
+            f.write(incar_content)
+        
+        # Write POSCAR file to target directory
+        write_POSCAR(input_structure=input_structure, target_directory=target_directory, specorder=specorder)
+
+        # The path to POTCAR
+        if path_to_potcar is None:
+            path_to_potcar = os.environ.get('DFT_POTCAR')
+
+        # Copy POTCAR into target_directory
+        try:
+            shutil.copy(path_to_potcar, target_directory)
+        except:
+            raise Exception("POTCAR file required by VASP was not found.")
 
 
 def write_lammps_data(input_structures, target_directory=None, prefixes='auto', specorder=None, write_masses=True,

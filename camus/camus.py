@@ -489,57 +489,6 @@ class Camus:
                 prefixes='', specorder=specorder, write_masses=True, atom_style=atom_style)
 
 
-    def create_vasp_calculation(self, specorder, input_structure=None, target_directory=None, path_to_potcar=None):
-        """
-        Writes all files necessary for a DFT (VASP) calculation (save for POSCAR which is created with write_POSCAR())
-        If `target_directory` is not given, `$CAMUS_DFT_DIR` is used.
-        If `path_to_potcar` is not provided, default POTCAR at `(...)` is used. 
-
-        """
-
-        # Set the default input_structure to self.Cstructures.structures[0]
-        if input_structure is None:
-            input_structure = self.Cstructures.structures[0]
-      
-        # Set default target_directory 
-        if target_directory is None:
-            target_directory = os.environ.get('CAMUS_DFT_DIR')
-            if target_directory is None:
-                raise ValueError("Target directory not specified and CAMUS_DFT_DIR environment variable is not set.")
-
-        # Create target directory if it does not exist
-        if not os.path.exists(target_directory):
-            os.makedirs(target_directory)
-
-        # Set parameters if the user didn't set them explicitly beforehand
-        if not self.Cwriters.dft_parameters:
-            self.Cwriters.set_dft_parameters()
-
-        # Define the INCAR file content
-        incar_content = "#DFT_PARAMETERS\n"
-        for key, value in self.Cwriters.dft_parameters.items():
-            if value is not None:
-                incar_content += f"  {key} = {self.Cwriters._dft_parameters[key]}\n"
-        incar_content += "/\n"
-
-        # Write the INCAR file to the target directory
-        with open(os.path.join(target_directory, 'INCAR'), 'w') as f:
-            f.write(incar_content)
-        
-        # Write POSCAR file to target directory
-        write_POSCAR(input_structure=input_structure, target_directory=target_directory, specorder=specorder)
-
-        # The path to POTCAR
-        if path_to_potcar is None:
-            path_to_potcar = os.environ.get('DFT_POTCAR')
-
-        # Copy POTCAR into target_directory
-        try:
-            shutil.copy(path_to_potcar, target_directory)
-        except:
-            raise Exception("POTCAR file required by VASP was not found.")
-
-
     def create_batch_calculation(self, base_directory, specorder, calculation_type='LAMMPS',
             input_structures=None, prefix='minimization', schedule=True, job_filename='sub.sh', atom_style='atomic', 
             path_to_potcar=None, from_eval_dict=False, path_to_eval_dict=None):
@@ -591,7 +540,7 @@ class Camus:
                 if from_eval_dict:
                     eval_dictionary[eval_keys[i]]['dft_directory'] = target_directory
 
-                self.create_vasp_calculation(input_structure=structure, target_directory=target_directory, specorder=specorder, path_to_potcar=path_to_potcar)
+                self.Cwriters.create_VASP_calculation(input_structure=structure, specorder=specorder, target_directory=target_directory, path_to_potcar=path_to_potcar)
 
             else:
                 raise Exception(f"Calculation type {calculation_type} not implemented.")
