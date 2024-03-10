@@ -75,6 +75,7 @@ class STransition():
         energies = self.saddlepoints_energies - self.minima_energies[:len(self.saddlepoints_energies)]
         return energies
 
+
     def plot_stransition(self, function=None, **kwargs):
         '''
         customizable parameters:

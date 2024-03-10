@@ -2,6 +2,8 @@ import os
 
 from ase.io import read
 from camus import camus
+from camus.tools.writers import Writers
+from camus.batch import Batch
 
 structs = read('test.traj', index='0:20')
 candidate_structs = read('test.traj', index='15:35')
@@ -59,21 +61,29 @@ lmp_input_dict = {
         'compute': 'cpe all pe',
         }
 
-camus_object.Cwriters.set_lammps_parameters(input_parameters=lmp_input_dict)
-camus_object.Cwriters.write_lammps_in(filename='test_nonstd_lmp.in')
+writer = Writers()
+
+print('Initialized a Writer() object.')
+
+writer.set_lammps_parameters(input_parameters=lmp_input_dict)
+writer.write_lammps_in(filename='test_nonstd_lmp.in')
 
 print('Wrote non-standard LAMMPS input to $CAMUS_LAMMPS_DATA_DIR.')
 
-camus_object.Cwriters.lammps_parameters = {}
+writer.lammps_parameters = {}
 
 sisyphus_test_directory = os.path.join(os.environ.get('CAMUS_SISYPHUS_DATA_DIR'), 'sisyphus_test_dir')
-camus_object.Cwriters.create_sisyphus_calculation(input_structure=camus_object.Cstructures.structures[0], target_directory=sisyphus_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
+writer.create_sisyphus_calculation(input_structure=camus_object.Cstructures.structures[0], target_directory=sisyphus_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'])
 
 print(f'Created files for a Sisyphus calculation in {sisyphus_test_directory}')
 
-camus_object.Cwriters.lammps_parameters = {}
+batch = Batch()
+
+print('Initialized a Batch() object')
+
+batch.Bwriters.lammps_parameters = {}
 batch_minimization_test_directory = os.path.join(os.environ.get('CAMUS_LAMMPS_MINIMIZATION_DIR'), 'batch_minimization_test_dir')
-camus_object.create_batch_calculation(base_directory=batch_minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'], calculation_type='LAMMPS', atom_style='charge')
+batch.create_batch_calculation(base_directory=batch_minimization_test_directory, specorder=['Br', 'I', 'Cs', 'Pb'], calculation_type='LAMMPS', input_structures=structs, atom_style='charge')
 
 print(f'Created files for a batch LAMMPS minimization in {batch_minimization_test_directory}')
 

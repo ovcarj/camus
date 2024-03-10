@@ -16,7 +16,8 @@ class Writers:
     def __init__(self, artn_parameters=None, lammps_parameters=None,
             sisyphus_parameters=None, dft_engine='VASP'):
         """
-        Initializes a new Writers object. Writes ARTn, LAMMPS, Sisyphus and DFT inputs.
+        Initializes a new Writers object.
+        Writes ARTn, LAMMPS, Sisyphus and DFT inputs for single structure and batch calculations.
 
         Parameters:
             parameter: parameter description placeholder.
@@ -475,6 +476,7 @@ Delta_E_final_initial=$(echo "$E_final - $E_initial" | bc -l)
 
 echo "MSG_END: E_initial = $E_initial    E_top = $E_top    E_final = $E_final" >> $SISYPHUS_LOG_FILE
 echo "MSG_END: Activation_E_forward = $Activation_E_forward    Delta_E_final_top = $Delta_E_final_top    Delta_E_final_initial = $Delta_E_final_initial" >> $SISYPHUS_LOG_FILE""")
+
 
     def create_sisyphus_calculation(self, input_structure, target_directory=None, initial_lammps_parameters=None, specorder=None, atom_style='atomic'):
         """
