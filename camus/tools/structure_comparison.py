@@ -10,6 +10,8 @@ import camus.tools.utils
 
 from collections import Counter
 
+from dscribe.kernels import AverageKernel
+
 
 def compare_sets(reference_set, candidate_set, specorder=None, similarity_threshold=0.90, 
         metric='laplacian', gamma=1, **acsf_kwargs):

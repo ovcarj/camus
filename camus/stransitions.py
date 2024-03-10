@@ -407,7 +407,7 @@ class STransitions():
 
                     # Find the corresponding cluster center
 
-                    cluster_center = camus.tools.utils.find_cluster_center(self._cluster_dictionary_stransitions, calculation_label, i)
+                    cluster_center = find_cluster_center(self._cluster_dictionary_stransitions, calculation_label, i)
                     waiting_list[str(i)] = cluster_center
 
                     if cluster_center['calculation_label'] == calculation_label:
