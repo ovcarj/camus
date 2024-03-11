@@ -14,7 +14,7 @@ import warnings
 import camus.tools.utils
 from camus.structures import Structures
 from camus.stransition import STransition
-from camus.tools.structure_comparison import cluster_set, compare_sets, find_cluster_center
+from camus.tools.structure_comparison import cluster_set, compare_sets
 
 
 class STransitions():
@@ -244,7 +244,8 @@ class STransitions():
         self._CR_dictionary_stransitions = {calculation_label: {
             'CR_similarity': ['I'] * len(self.concatenated_map[calculation_label]),
             'maximum_similarity': [0.0] * len(self.concatenated_map[calculation_label]),
-            'max_sim_R_index': [-1] * len(self.concatenated_map[calculation_label])
+            'max_sim_R_index': [-1] * len(self.concatenated_map[calculation_label]),
+            'delta_e_CR': [0.0] * len(self.concatenated_map[calculation_label])
             } 
                 for calculation_label in self.concatenated_map.keys()} 
 
@@ -257,11 +258,13 @@ class STransitions():
 
                 CR_similarity = self._CR_dictionary_composition[composition]['CR_similarity'][i]
                 maximum_similarity = self._CR_dictionary_composition[composition]['maximum_similarity'][i]
-                max_sim_R_index= self._CR_dictionary_composition[composition]['max_sim_R_index'][i]
+                max_sim_R_index = self._CR_dictionary_composition[composition]['max_sim_R_index'][i]
+                delta_e_CR = self._CR_dictionary_composition[composition]['delta_e_CR'][i]
 
                 self._CR_dictionary_stransitions[calculation_label]['CR_similarity'][original_index] = CR_similarity
                 self._CR_dictionary_stransitions[calculation_label]['maximum_similarity'][original_index] = maximum_similarity
                 self._CR_dictionary_stransitions[calculation_label]['max_sim_R_index'][original_index] = max_sim_R_index
+                self._CR_dictionary_stransitions[calculation_label]['delta_e_CR'][original_index] = delta_e_CR
 
 
     def cluster_stransitions(self, specorder=None, structure_type='transition', additional_flags_dictionary=None, similarity_threshold=0.90,
@@ -372,59 +375,6 @@ class STransitions():
 
             similarity_flag = similarity_flag_entry['similarity_flag']
             self._uniqueness_dictionary[calculation_label][index] = similarity_flag
-
-
-    def create_evaluation_dictionary(self):
-        """
-        Creates self._evaluation_dictionary of format (TODO: Write exact format) for future evaluation against reference based on self._cluster_dictionary_stransitions and self._uniqueness_dictionary.
-        Possible status_list flags: `P` (pass/good structure), `W` (waiting for some other structure to be evaluated), `BC` (goes into next batch of calculation), `C` (calculation running), `B` (bad prediction), `T` (throw away)
-        Structure of `waiting_for`: `index of structure that's waiting for`: `{'calculation_label', index}`
-        """
-
-        if not hasattr(self, '_uniqueness_dictionary'):
-            self.create_uniqueness_dictionary()
-
-        self._evaluation_dictionary = camus.tools.utils.new_dict()
-
-        for calculation_label in self.stransitions.keys():
-
-            no_of_structures = len(self.stransitions[calculation_label].transition_structures.structures)
-
-            uniqueness_dictionary = np.array(self._uniqueness_dictionary[calculation_label], dtype='str')
-            waiting_list = camus.tools.utils.new_dict()
-            status_list = np.where(uniqueness_dictionary == 'N_D', 'P', 'I')
-
-            for i in range(no_of_structures):
-
-                uniqueness_flag = uniqueness_dictionary[i]
-
-                if uniqueness_flag == 'N_D':
-                    pass
-
-                elif uniqueness_flag == 'U_NBR':
-
-                    status_list[i] = 'W'
-
-                    # Find the corresponding cluster center
-
-                    cluster_center = find_cluster_center(self._cluster_dictionary_stransitions, calculation_label, i)
-                    waiting_list[str(i)] = cluster_center
-
-                    if cluster_center['calculation_label'] == calculation_label:
-                        pass
-                    else:
-                        break
-
-                elif (uniqueness_flag == 'U_CTR' or uniqueness_flag == 'U_ORP'):
-
-                    status_list[i] = 'BC'
-
-                    break
-
-            self._evaluation_dictionary[calculation_label] = {
-                    'status_list': status_list,
-                    'waiting_for': waiting_list
-                    }
 
 
     def get_maximum_displacement_properties(self, structure_type='minima'):

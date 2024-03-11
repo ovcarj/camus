@@ -51,8 +51,12 @@ def compare_sets(reference_set, candidate_set, specorder=None, similarity_thresh
     CR_dictionary = {composition: {
         'CR_similarity': ['I'] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
         'maximum_similarity': [0.0] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
-        'max_sim_R_index': [-1] * len(candidate_set.structures_grouped_by_composition[composition]['indices'])
+        'max_sim_R_index': [-1] * len(candidate_set.structures_grouped_by_composition[composition]['indices']),
+        'delta_e_CR': [0.0] * len(candidate_set.structures_grouped_by_composition[composition]['indices'])
         } for composition in candidate_set.structures_grouped_by_composition.keys()}
+
+    # get reference_set energies for later writing (forces will possibly be added later, for now not necessary)
+    reference_energies = reference_set.get_energies_and_forces()[0]
 
     # set descriptors to groups
     
@@ -85,6 +89,8 @@ def compare_sets(reference_set, candidate_set, specorder=None, similarity_thresh
 
     for composition in common_compositions:
 
+        candidate_energies = candidate_set.structures_grouped_by_composition[composition]['structures'].get_energies_and_forces()[0]
+
         candidate_descriptors = candidate_set.structures_grouped_by_composition[composition]['structures'].descriptors
         reference_descriptors = reference_set.structures_grouped_by_composition[composition]['structures'].descriptors
 
@@ -105,6 +111,7 @@ def compare_sets(reference_set, candidate_set, specorder=None, similarity_thresh
             CR_dictionary[composition]['CR_similarity'][candidate_index] = CR_flag
             CR_dictionary[composition]['maximum_similarity'][candidate_index] = maximum_similarity
             CR_dictionary[composition]['max_sim_R_index'][candidate_index] = max_sim_reference_index
+            CR_dictionary[composition]['delta_e_CR'][candidate_index] = candidate_energies[candidate_index] - reference_energies[max_sim_reference_index]
 
     return CR_dictionary
 
