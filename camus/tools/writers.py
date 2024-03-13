@@ -681,13 +681,14 @@ def write_lammps_data(input_structures, target_directory=None, prefixes='auto', 
                     if atom.symbol == spec:
                         masses.append(atom.mass)
                         break
-                    else: pass
+                    else:
+                        pass
 
             with open(file_name, 'r') as f:
                 lines = f.readlines()
 
             for i, line in enumerate(lines):
-                if line.strip() == 'Atoms':
+                if line.strip().startswith('Atoms'):
                     lines.insert(i, 'Masses\n\n')
                     for j, spec in enumerate(specorder):
                         lines.insert(i+j+1, f'{j+1} {masses[j]} # {spec}\n')

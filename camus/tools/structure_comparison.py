@@ -29,11 +29,13 @@ def compare_sets(reference_set, candidate_set, specorder=None, similarity_thresh
 
     # (1) Get/calculate descriptors
 
-    if not candidate_set.descriptors.any():
+#    if not candidate_set.descriptors.any():
+    if candidate_set.descriptors == []:
         candidate_set.set_acsf_parameters(**acsf_kwargs)
         candidate_set.calculate_descriptors()
 
-    if not reference_set.descriptors.any():
+#    if not reference_set.descriptors.any():
+    if reference_set.descriptors == []:
         reference_set.set_acsf_parameters(**acsf_kwargs)
         reference_set.calculate_descriptors()
 
@@ -126,7 +128,8 @@ def cluster_set(candidate_set, specorder=None, additional_flags_dictionary=None,
 
     # (1) Get/calculate descriptors
 
-    if not candidate_set.descriptors.any():
+#    if not candidate_set.descriptors.any():
+    if candidate_set.descriptors == []:
         candidate_set.set_acsf_parameters(**acsf_kwargs)
         candidate_set.calculate_descriptors(n_jobs=n_jobs, positions=positions)
 

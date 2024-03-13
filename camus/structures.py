@@ -78,7 +78,7 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
         if descriptors is not None:
             self.descriptors = descriptors
         else:
-            self.descriptors = np.empty(0)
+            self.descriptors = []
 
         if acsf_parameters is not None:
             self.acsf_parameters = acsf_parameters
@@ -276,7 +276,8 @@ sisyphus_set=None, minimized_set=None, descriptors=None, acsf_parameters=None):
             energies.append(energy)
             forces.append(force)
 
-        return np.array(energies), np.array(forces)
+#        return np.array(energies), np.array(forces)
+        return energies, forces
 
 
     def set_charges(self, charges_input=None, input_structures=None):
