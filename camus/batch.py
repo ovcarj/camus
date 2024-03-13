@@ -445,6 +445,10 @@ class Batch():
         # Remember cwd so we can return back at the end of the method
         start_cwd = os.getcwd()
 
+        # Get absolute path of directory
+
+        base_directory = os.path.abspath(base_directory)
+
         # cd to base_directory
         os.chdir(base_directory)
 
@@ -472,7 +476,7 @@ class Batch():
 
 
     def parse_batch_calculation(self, specorder=None, base_directory=None, jobs_info_dict_filename=None, calculation_type='LAMMPS_minimization', 
-            save_traj=True, traj_filename='minimized_structures.traj', path_to_eval_dict=None, from_eval_dict=False, **kwargs):
+            dump_filename='minimized.xyz', save_traj=True, traj_filename='minimized_structures.traj', path_to_eval_dict=None, from_eval_dict=False, **kwargs):
         """
         Note: run self.Bscheduler.check_job_list_status() before parsing to get updated jobs info.
         Parses results from calculations of `calculation_type` in subdirectories of `base_directory`. If `base_directory` is not given,
@@ -481,6 +485,7 @@ class Batch():
         If `calculation_type`=='LAMMPS_minimization', calls parse_batch_lammps() and stores structures in self.Bstructures.minimized_set. 
         If `save_traj`=True, a `traj_filename` ASE trajectory file is saved to `base_directory`.
         `specorder` must be given so LAMMPS dump can be read correctly.
+        `results_structure_filename`
 
         TODO: `calculation_type` == 'LAMMPS_MD',  ...
 
@@ -505,7 +510,7 @@ class Batch():
 
             # Initialize self.Bstructures.minimized_set with None
             self.Bstructures.minimized_set = [None] * len(self.Bscheduler.jobs_info.keys())
-            self.parse_batch_lammps(specorder, self.Bscheduler.jobs_info, calculation_type, results_structure_filename='minimized.xyz')
+            self.parse_batch_lammps(specorder, self.Bscheduler.jobs_info, calculation_type, dump_filename=dump_filename)
 
             # Save a trajectory file with minimized structures if specified
             if save_traj:
@@ -533,9 +538,9 @@ class Batch():
         save_to_pickle(self.Bscheduler.jobs_info, os.path.join(f'{base_directory}', 'calculation_info.pkl'))
 
 
-    def parse_batch_lammps(self, specorder, jobs_info, calculation_type, results_structure_filename=None):
+    def parse_batch_lammps(self, specorder, jobs_info, calculation_type, dump_filename=None):
         """
-        Parses finished LAMMPS calculations in directories given by `jobs_info` dictionary. Only `calculation_type`=='LAMMPS_minimization' is implemented for now.
+        Parses finished LAMMPS calculations in directories given by `jobs_info` dictionary. Only `calculation_type`=='LAMMPS_minimization' is implemented for now (which should be relatively easily generalized to other types LAMMPS calculations).
         """
 
         for job_id, job_info in jobs_info.items():
@@ -548,7 +553,7 @@ class Batch():
                 # LAMMPS minimization case
                 if calculation_type == 'LAMMPS_minimization':
 
-                    minimization_file = os.path.join(directory, results_structure_filename)
+                    minimization_file = os.path.join(directory, dump_filename)
                     log_lammps = os.path.join(directory, 'log.lammps')
 
                     # Check if the minimized.xyz file was generated
