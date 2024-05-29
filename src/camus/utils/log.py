@@ -1,0 +1,218 @@
+import sys
+import os
+import logging
+
+import camus.utils.utils as camus_utils
+
+from camus import __version__
+
+def init_logger(logname='camus', logdir=None):
+    """
+    Initialize the logger object.
+
+    Parameters
+    ----------
+    logname : str
+        Name of the logger object (also used in naming in the log file)
+    logdir : str
+        Directory in which to store the log file. If not given, default to current directory
+
+    Returns
+    ----------
+    logger : logging.Logger
+        logging.Logger object
+
+    """
+
+    if logdir is None:
+        logdir = os.getcwd()
+
+    os.makedirs(logdir, exist_ok=True)
+
+    if not logdir.endswith('/'):
+        logdir += '/'
+
+    if not logname.endswith('.log'):
+        logname += '.log'
+
+    logger = logging.getLogger(logname)
+
+    logger.setLevel(logging.INFO) 
+
+    stream_handler = logging.StreamHandler(sys.stdout)
+    logger.addHandler(stream_handler)
+
+    file_handler = logging.FileHandler(f'{logdir}{logname}')
+    file_handler.setLevel(logging.INFO)
+    logger.addHandler(file_handler)
+
+    return logger
+
+def get_logger_fh_path(logger):
+    """
+    Get path to where a log is stored 
+    (baseFilename of the logger FileHandler with level INFO).
+
+    Parameters
+    ----------
+    logger : logging.Logger
+        logging.Logger object
+
+    Returns
+    ----------
+    base_filename : str
+        Path to where the log is stored.
+
+    """
+
+    if logger.hasHandlers():
+
+        handlers = logger.handlers
+
+        base_filename = ''
+
+        for handler in handlers:
+
+            if type(handler) == logging.FileHandler:
+                if handler.level == 20:
+                    base_filename += handler.baseFilename
+
+        if base_filename == '':
+            return 'No logger file handlers found'
+
+        else:
+            return base_filename
+
+    else:
+        return 'No logger handlers found.'
+
+def camus_start(start_datetime, logpath=None):
+    """
+    Report on the beginning of ``camus`` execution.
+
+    Parameters
+    ----------
+    start_datetime : str
+        Starting datetime in ``%Y%m%d-%H%M%S`` format
+    logpath : str | None
+        Path to the logfile
+
+    Returns
+    ----------
+    start_report : str
+        Report on the beginning of ``camus`` execution
+ 
+    """
+
+    start_report = ''
+
+    log_dashes = get_log_dashes()
+    logo = get_logo()
+
+    start_report += logo + '\n'
+    start_report += log_dashes + '\n'
+    start_report += f'camus started on {start_datetime}\n'
+    start_report += log_dashes 
+
+    if logpath:
+
+        start_report += '\n'
+        start_report += f'Logfile: {logpath}\n'
+        start_report += log_dashes
+
+    return start_report
+
+def camus_end(start_datetime):
+    """
+    Report on the end of ``camus`` execution.
+
+    Parameters
+    ----------
+    start_datetime : str
+        Starting datetime in ``%Y%m%d-%H%M%S`` format
+
+    Returns
+    ----------
+    end_report : str
+        Report on the end of ``camus`` execution
+ 
+    """
+
+    end_datetime = camus_utils.get_current_datetime()
+
+    end_report = ''
+
+    log_dashes = get_log_dashes()
+
+    runtime = camus_utils.get_runtime(
+            camus_utils.convert_time_string(start_datetime),
+            camus_utils.convert_time_string(end_datetime)
+            )
+
+    end_report += log_dashes + '\n'
+    end_report += f'camus finished on {end_datetime}\n'
+    end_report += f'Total runtime: {runtime}'
+
+    return end_report
+
+def get_log_dashes():
+    """
+    Create some dashes for logging.
+
+    Returns
+    -------
+    str
+        Dashes for logging
+
+    """
+
+    return '----------------------------------------------'
+
+def get_short_log_dashes():
+    """
+    Create some dashes for logging.
+
+    Returns
+    -------
+    str
+        Dashes for logging
+
+    """
+
+    return '-----------------------------'
+
+def get_very_short_log_dashes():
+    """
+    Create some dashes for logging.
+
+    Returns
+    -------
+    str
+        Dashes for logging
+
+    """
+
+    return '-----------'
+
+def get_logo():
+    """
+    Create the ``camus`` logo.
+
+    Returns
+    -------
+    str
+        The ``camus`` logo
+
+    """
+
+    logo = rf"""
+#
+#    ________   __  _____  ______
+#   / ___/ _ | /  |/  / / / / __/
+#  / /__/ __ |/ /|_/ / /_/ /\ \  
+#  \___/_/ |_/_/  /_/\____/___/  
+#                                
+#                   v={__version__}
+"""
+
+    return logo

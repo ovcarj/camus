@@ -246,6 +246,10 @@ module purge
         if not base_directory:
             base_directory = os.getcwd()
 
+        # Use absolute path of base directory
+
+        base_directory = os.path.abspath(base_directory)
+
         # Search for jobs_info_dict
         if not jobs_info_filename:
             jobs_info_filename = glob.glob(os.path.join(f'{base_directory}', '*_info.pkl'))[0]

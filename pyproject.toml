@@ -1,0 +1,40 @@
+[build-system]
+requires = ['setuptools', 'setuptools-scm']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'camus'
+version = '0.0.1'
+authors = [
+    {name = 'Juraj Ovcar', email = 'juraj.ovcar@gmail.com'},
+    {name = 'Radovan Matula', email = 'rady.matula.rm@gmail.com'}
+]
+description = 'camus: automatized refinement of ML models via iterative artN searches'
+readme = 'README.rst'
+requires-python = '>=3.10'
+keywords = ['camus', 'machine', 'learning', 'artn', 'transitions', 'refinement']
+license = {text = 'GPL-3.0-only'}
+classifiers = [
+    'Programming Language :: Python :: 3',
+    'License :: OSI Approved :: GNU General Public License version 3',
+]
+dependencies = [
+    'ase',
+    'dscribe',
+    'platformdirs',
+    'click',
+    'importlib-metadata; python_version>="3.10"',
+]
+
+[project.scripts]
+camus = 'camus.__main__:camus_cli'
+
+[project.optional-dependencies]
+test = ['pytest>=6.0', 'pytest-cov']
+
+[tool.pytest.ini_options]
+minversion = '6.0'
+addopts = '--cov -rs'
+
+[tool.setuptools.dynamic]
+version = {attr = 'camus.__version__'}

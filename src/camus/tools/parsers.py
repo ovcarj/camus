@@ -36,6 +36,12 @@ def parse_lammps_dump(specorder, log_lammps='log.lammps', dump_name='minimized.x
             structure.calc.results['energy'] = float(potential_energy)
             break
 
+        elif 'TotEng' in line:
+            energies_line = log_lines[i+1].strip()
+            potential_energy = energies_line.split()[4]
+            structure.calc.results['energy'] = float(potential_energy)
+            break
+            
     return structure
 
 
