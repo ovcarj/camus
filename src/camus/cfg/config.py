@@ -117,20 +117,27 @@ class Config:
             if len(new_lammps_exe) > 0:
                 self.edit_config_file(update_dict={'LAMMPS': {'lammps_exe': new_lammps_exe}})
 
+            click.echo('\n')
+
             new_lammps_run_command = input(f'Provide a command which will be used as a default to run the LAMMPS executable (e.g. mpirun -np 4) or press "Enter" to skip this step.\n')
 
             if len(new_lammps_run_command) > 0:
                 self.edit_config_file(update_dict={'LAMMPS': {'lammps_run_command': new_lammps_run_command}})
+
+            click.echo('\n')
 
             new_lammps_flags = input(f'Provide flags you wish to use to run LAMMPS (e.g. -sf omp -pk omp 1) or press "Enter" to not append any flags.\n')
 
             if len(new_lammps_flags) > 0:
                 self.edit_config_file(update_dict={'LAMMPS': {'lammps_flags': new_lammps_flags}})
 
+            click.echo('\n')
+
             click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented...')
 
             click.echo(self._dashes)
-            click.echo(f'camus config successful!')
+            click.echo(f'camus configuration successful!')
+            click.echo(f'To edit the config file, see camus config edit --help')
             click.echo(self._dashes)
 
             self.print_config()
@@ -166,7 +173,7 @@ class Config:
         elif proceed == 'n':
 
             click.echo(f'Stopping, as requested.')
-            click.echo(f'Check "camus config --help" for instructions on editing the config file or run "camus clean config" to delete the config file.')
+            click.echo(f'Check "camus config edit --help" for instructions on editing the config file or run "camus clean config" to delete the current config file.')
             click.echo(self._dashes)
 
             sys.exit()
@@ -237,7 +244,7 @@ class Config:
                 for subsection, value in subsections_values.items():
 
                     if subsection not in all_subsections:
-                        click.echo(f'Invalid configuration subsection {subsection}')
+                        click.echo(f'Invalid configuration option {subsection}')
 
                     else:
 
@@ -246,9 +253,38 @@ class Config:
                         with open(self._config_path, 'w') as configfile:
                             self._config.write(configfile)
 
-                        click.echo(f'Config: [{section}]: {subsection} updated to {value}')
+                        click.echo(f'Config [{section}]: {subsection} updated to {value}')
                         self.read_config()
 
+    def edit_config_by_subsection(self, subsection, value):
+        """
+        Edits the contents of the config file by passing only the subsection and the value, while the section is automatically found.
+
+        Parameters
+        ----------
+        subsection : str
+            Subsection in the config file
+        value : str | float | int
+            Value that the subsection is updated to
+
+        """
+
+        self.read_config()
+        all_sections = self._config.sections()
+
+        update_dict = {}
+
+        for section in all_sections:
+
+            if subsection in self._config.options(section):
+
+                update_dict[section] = {subsection: value}
+                self.edit_config_file(update_dict=update_dict)
+
+                break
+            
+        else:
+            click.echo(f'Invalid config option "{subsection}"')
 
     def clean_config(self):
         """

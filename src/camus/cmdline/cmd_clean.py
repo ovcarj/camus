@@ -1,7 +1,7 @@
 import click
 
-from camus.datadir import Datadir
-from camus.config import Config
+from camus.cfg.datadir import Datadir
+from camus.cfg.config import Config
 
 @click.command('all_data', help='Delete the camus data directory.')
 def clean_all_data():

@@ -5,7 +5,7 @@ import click
 import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
-from camus.config import Config
+from camus.cfg.config import Config
 
 class Datadir:
     """

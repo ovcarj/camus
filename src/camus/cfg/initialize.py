@@ -3,8 +3,8 @@ import click
 import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
-from camus.datadir import Datadir
-from camus.config import Config
+from camus.cfg.datadir import Datadir
+from camus.cfg.config import Config
 
 def create_config():
     """
