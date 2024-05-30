@@ -5,6 +5,7 @@ import camus.utils.log as camus_log
 
 from camus.cfg.datadir import Datadir
 from camus.cfg.config import Config
+from camus.db.db import DB
 
 def create_config():
     """
@@ -22,9 +23,17 @@ def create_directories():
     ad = Datadir()
     ad.create_directories()
 
+def create_database():
+    """
+    Create the ``camus`` database.
+    """
+
+    db = DB()
+    db.create_database()
+
 def initialize_camus():
     """
-    Create ``camus`` data directories and #TODO databases.
+    Create ``camus`` data directories and database.
     """
 
     start_datetime = camus_utils.get_current_datetime()
@@ -34,6 +43,7 @@ def initialize_camus():
 
     create_config()
     create_directories()
+    create_database()
     
     click.echo('camus initialization complete!')
 

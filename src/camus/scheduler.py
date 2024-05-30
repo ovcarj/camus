@@ -12,7 +12,7 @@ import glob
 
 from abc import ABC, abstractmethod
 
-from camus.tools.utils import save_to_pickle, load_pickle
+from camus.utils.utils import save_to_pickle, load_pickle
 
 class Scheduler(ABC):
 
@@ -232,7 +232,8 @@ module purge
                     subprocess.run(["scancel", job_id])
 
             # Transient job status - hopefully nothing special is happening
-            else: pass
+            else: 
+                pass
 
     def check_job_list_status(self, base_directory=None, jobs_info_filename=None, max_runtime=180000, max_queuetime=360000, sleep_time=60):
         """ Calls self.check_job_status every `sleep_time` seconds and checks the status of all jobs in subdirectories of 

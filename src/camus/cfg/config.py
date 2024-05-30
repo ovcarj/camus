@@ -73,7 +73,7 @@ class Config:
 
             click.echo(f'WARNING: camus config file already exists at {self._config_path}')
             click.echo(self._dashes)
-            self.handle_config_exists()
+            self._handle_config_exists()
 
         else:
 
@@ -87,7 +87,7 @@ class Config:
                     self._config.write(configfile)
 
             except:
-                click.echo('Failed to initialize the camus config file at {self._config_path}. Exiting.')
+                click.echo('Failed to initialize the camus config file at {self._config_path}. Do you have the required permissions to write to the requested directory? Exiting.')
                 sys.exit()
 
             self.check_existence()
@@ -142,9 +142,9 @@ class Config:
 
             self.print_config()
 
-    def handle_config_exists(self):
+    def _handle_config_exists(self):
         """
-        Handles the case when the user tries to run ``camus init`` with a preexisting config file.
+        Handles the case when the user tries to run ``self.create_config_file()`` with a preexisting config file.
         """
         
         self.print_config()

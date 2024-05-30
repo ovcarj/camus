@@ -15,7 +15,7 @@ class Datadir:
 
     def __init__(self):
         """
-        Store default directories using ``platformdirs``.
+        Get the base directory from the config file.
         """
 
         config = Config()
@@ -67,7 +67,7 @@ class Datadir:
 
             elif overwrite == 'n':
 
-                click.echo('Stopping camus data directory overwriting.')
+                click.echo('Will not overwrite the camus data directory.')
                 click.echo(self._dashes)
 
                 return

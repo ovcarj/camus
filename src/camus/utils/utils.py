@@ -350,3 +350,23 @@ def delete_directory_content(directory_path):
 
     else:
         click.echo(f'Could not delete all files in {directory_path}')
+
+def delete_file(file_path):
+    """
+    Deletes a file given by the path.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the file to be deleted
+
+    """
+
+    if not file_exists(file_path):
+        click.echo('Nothing to delete.')
+
+    else:
+        os.remove(file_path)
+
+    if not file_exists(file_path):
+        click.echo(f'{file_path} deleted.')
