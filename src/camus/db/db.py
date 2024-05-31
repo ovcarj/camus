@@ -6,7 +6,7 @@ import sqlite3
 import camus.utils.log as camus_log
 import camus.utils.utils as camus_utils
 
-from camus.cfg.datadir import Datadir
+from camus.db.datadir import Datadir
 
 class DB:
     """

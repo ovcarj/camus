@@ -8,7 +8,6 @@ from camus.cfg.datadir import Datadir
 
 class Project:
     """
-
     Class which handles creation, deletion, configuring, logging and querying projects.
 
     """
@@ -24,19 +23,15 @@ class Project:
 
         """
 
-        datadir = Datadir()
-        self._base = datadir.base
-        self._projects_base = f'{self._base}/projects'
+        self._datadir = Datadir()
+        self._db = DB()
 
         self.label = label
 
-        self._db = DB()
+        if self.label:
+            self._project_dir_exists()
 
-        if self.label is not None:
-            # Load project here
-            pass
-
-    def new_project(self, label):
+    def create_new_project(self, label):
         """
         Creates a new project with a given label.
 
@@ -46,5 +41,22 @@ class Project:
             Label for the new project
 
         """
-        pass 
+        
 
+
+    def _project_dir_exists(self):
+        """
+        Checks if ``{self.base}/projects/{project_label}`` exists. The self._dir_exists attribute is updated accordingly.
+
+        Parameters
+        ----------
+        project_label : str
+            Label of the project whose directory is checked for existence
+
+        """
+
+        if self.label:
+            self._dir_exists = camus_utils.directory_exists
+
+        else:
+            self._dir_exists = False

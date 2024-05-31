@@ -3,7 +3,7 @@ import click
 import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
-from camus.cfg.datadir import Datadir
+from camus.db.datadir import Datadir
 from camus.cfg.config_camus import Config_camus
 from camus.db.db import DB
 

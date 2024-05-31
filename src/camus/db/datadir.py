@@ -81,6 +81,19 @@ class Datadir:
 
         click.echo(self._dashes)
 
+    def create_project_dir(self, project_label):
+        """
+        Creates a directory {self.base}/projects/{project_label}.
+        """
+
+        project_path = f'{self.base}/projects/{project_label}'
+
+        try:
+            os.makedirs(name=project_path, exist_ok=False)
+
+        except OSError:
+            click.echo(f'Project already exists at {project_path}' )
+
     def clean_all_directories(self):
         """
         Deletes all ``camus`` data directories.

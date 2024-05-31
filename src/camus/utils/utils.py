@@ -244,7 +244,7 @@ def file_exists(file_path):
 
 def is_directory_empty(directory_path):
     """
-    Check if directory ``directory_path`` is not empty.
+    Check if directory ``directory_path`` is empty.
 
     Parameters
     ----------
