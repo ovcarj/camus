@@ -1,7 +1,7 @@
 import click
 
 from camus.cfg.datadir import Datadir
-from camus.cfg.config import Config
+from camus.cfg.config_camus import Config_camus
 from camus.db.db import DB
 
 @click.command('all_data', help='Delete the camus data directory.')
@@ -19,7 +19,7 @@ def clean_config():
     Deletes the ``camus`` config file.
     """
 
-    cfg = Config()
+    cfg = Config_camus()
     cfg.clean_config()
 
 @click.command('db', help='Delete the camus database.')

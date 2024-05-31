@@ -5,7 +5,7 @@ import click
 import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
-from camus.cfg.config import Config
+from camus.cfg.config_camus import Config_camus
 
 class Datadir:
     """
@@ -18,9 +18,9 @@ class Datadir:
         Get the base directory from the config file.
         """
 
-        config = Config()
+        config = Config_camus()
 
-        self.base = config._base_directory
+        self.base = config._config['camusDataDirectory']['data_directory']
         
         self.check_existence()
 
@@ -74,6 +74,8 @@ class Datadir:
 
         os.makedirs(self.base)
         click.echo(f'camus base directory created at {self.base}')
+        os.makedirs(f'{self.base}/projects')
+        click.echo(f'Empty camus projects directory created at {self.base}/projects')
 
         self.check_existence()
 

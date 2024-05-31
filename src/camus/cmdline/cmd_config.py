@@ -1,6 +1,6 @@
 import click
 
-from camus.cfg.config import Config
+from camus.cfg.config_camus import Config_camus
 
 @click.command('show', help='Print the main camus config file.')
 def show_config():
@@ -8,7 +8,7 @@ def show_config():
     Prints the ``camus`` config file.
     """
 
-    cfg = Config()
+    cfg = Config_camus()
     cfg.print_config()
 
 @click.command('edit', help="""Edit the contents of the config file.
@@ -38,7 +38,7 @@ def edit_config(option, value):
 
     value_str = ' '.join(value)
 
-    cfg = Config()
+    cfg = Config_camus()
     cfg.edit_config_by_subsection(subsection=option, value=value_str)
 
 @click.group()

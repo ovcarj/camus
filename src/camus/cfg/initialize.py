@@ -4,15 +4,15 @@ import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
 from camus.cfg.datadir import Datadir
-from camus.cfg.config import Config
+from camus.cfg.config_camus import Config_camus
 from camus.db.db import DB
 
 def create_config():
     """
-    Create the ``camus`` config file.
+    Create the main ``camus`` config file.
     """
 
-    cfg = Config()
+    cfg = Config_camus()
     cfg.create_config_file()
 
 def create_directories():
@@ -44,7 +44,8 @@ def initialize_camus():
     create_config()
     create_directories()
     create_database()
-    
+
+    click.echo(camus_log.get_log_dashes())
     click.echo('camus initialization complete!')
 
     end_report = camus_log.camus_end(start_datetime)

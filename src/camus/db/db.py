@@ -61,12 +61,18 @@ class DB:
                 self._cur = self._con.cursor()
 
             except:
-                click.echo('Failed to initialize the camus database at {self._db_path}. Do you have the required permissions to write to the requested directory? Exiting.')
+                click.echo(f'Failed to initialize the camus database at {self._db_path}. Do you have the required permissions to write to the requested directory? Exiting.')
                 sys.exit()
 
             self.check_existence()
 
             if self._db_exists:
+
+                self._cur.execute('CREATE TABLE projects(proj_label, proj_directory, proj_config, proj_log)')
+                self._cur.execute('CREATE TABLE batches(proj_label, batch_label, batch_directory, batch_config, batch_log)')
+                self._cur.execute('CREATE TABLE calculations(proj_label, batch_label, calc_label, calc_directory, calc_log)')
+                self._con.commit()
+
                 click.echo(f'camus database initialized at {self._db_path}')
 
             else:
