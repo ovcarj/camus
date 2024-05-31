@@ -12,11 +12,13 @@ class DB:
     """
     Class which handles creation, deletion and updating of the ``camus`` database,
     which is found at ``platformdirs.user_data_dir(appname='camus')/camus.db``
+
     """
 
     def __init__(self):
         """
         If the database exists, establishes a connection and a cursor.
+
         """
 
         datadir = Datadir()
@@ -37,6 +39,7 @@ class DB:
         """
         Checks the existence of the ``camus`` database;
         the ``self._db_exists`` attribute is updated accordingly
+
         """
 
         self._db_exists = camus_utils.file_exists(self._db_path)
@@ -44,6 +47,7 @@ class DB:
     def create_database(self):
         """
         If the camus database doesn't exist, creates it.
+
         """
 
         self.check_existence()
@@ -68,8 +72,8 @@ class DB:
 
             if self._db_exists:
 
-                self._cur.execute('CREATE TABLE projects(proj_label, proj_directory, proj_config, proj_log)')
-                self._cur.execute('CREATE TABLE batches(proj_label, batch_label, batch_directory, batch_config, batch_log)')
+                self._cur.execute('CREATE TABLE projects(proj_label, proj_directory, proj_config, proj_log, proj_description)')
+                self._cur.execute('CREATE TABLE batches(proj_label, batch_label, batch_directory, batch_config, batch_log, batch_description)')
                 self._cur.execute('CREATE TABLE calculations(proj_label, batch_label, calc_label, calc_directory, calc_log)')
                 self._con.commit()
 
@@ -82,6 +86,7 @@ class DB:
     def _handle_database_exists(self):
         """
         Handles the case when the user tries to run ``self.create_database()`` with a preexisting database.
+
         """
         
         input_ok = False
@@ -113,9 +118,82 @@ class DB:
 
             sys.exit()
 
+    def create_new_project(self, proj_label, proj_directory, proj_config, proj_log, proj_description=None):
+        """
+        Updates the ``projects`` table with the new project data.
+
+        Parameters
+        ----------
+        proj_label : str
+            Label for the new project
+        proj_directory : str
+            Path to the project directory
+        proj_config : str
+            Path to the project configuration file
+        proj_config : str
+            Path to the project log file
+        proj_description : None
+            Optional project description
+
+        """
+
+        if not proj_description:
+            proj_description = ''
+
+        data = ({
+            'proj_label': proj_label,
+            'proj_directory': proj_directory,
+            'proj_config': proj_config,
+            'proj_log': proj_log,
+            'proj_description': proj_description
+                })
+
+        self._cur.execute("""
+        INSERT INTO projects VALUES(:proj_label, :proj_directory, :proj_config, :proj_log, :proj_description) 
+        """, data)
+
+        self._con.commit()
+
+    def list_all_projects(self):
+        """
+        Lists all projects found in the ``projects`` table.
+
+        """
+
+        all_projects_res = self._cur.execute("""
+        SELECT proj_label, proj_description FROM projects ORDER BY proj_label ASC
+        """)
+
+        all_projects = all_projects_res.fetchall()
+
+        max_project_length = len('Label')
+        max_description_length = len('Description')
+
+        for project, description in all_projects:
+
+            if len(project) > max_project_length:
+                max_project_length = len(project)
+
+            if len(description) > max_description_length:
+                max_description_length = len(description)
+
+        max_project_length += 8
+
+        dashes = '-' * (max_project_length + max_description_length + 1)
+
+        click.echo(dashes)
+        click.echo('{:<{max_project_length}} {:<{max_project_length}}'.format('Label', 'Description', max_project_length=max_project_length))
+        click.echo(dashes)
+
+        for project_description in all_projects:
+            click.echo('{:<{max_project_length}} {:<{max_project_length}}'.format(*project_description, max_project_length=max_project_length))
+
+        click.echo(dashes)
+
     def clean_database(self):
         """
         Deletes the database found at ``self._db_path``.
+
         """
 
         self.check_existence()
