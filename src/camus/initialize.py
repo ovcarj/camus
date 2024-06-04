@@ -4,7 +4,7 @@ import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
 from camus.db.datadir import Datadir
-from camus.cfg.config_camus import Config_camus
+from camus.cfg.config_camus import ConfigCamus
 from camus.db.db import DB
 
 def create_config():
@@ -12,7 +12,7 @@ def create_config():
     Create the main ``camus`` config file.
     """
 
-    cfg = Config_camus()
+    cfg = ConfigCamus()
     cfg.create_config_file()
 
 def create_directories():

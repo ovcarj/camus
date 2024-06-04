@@ -104,9 +104,9 @@ class Config(abc.ABC):
                 sys.exit()
 
             self._config_wizard()
-            
-            self.print_config()
 
+            self.print_config()
+            
     @abc.abstractmethod
     def _config_wizard(self):
         """

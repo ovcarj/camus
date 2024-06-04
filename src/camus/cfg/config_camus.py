@@ -5,7 +5,7 @@ import platformdirs
 
 from camus.cfg.config import Config
 
-class Config_camus(Config):
+class ConfigCamus(Config):
     """
     Class which handles creation, deletion, reading and editing of the
     main ``camus`` config file, which is found at 
@@ -43,6 +43,8 @@ class Config_camus(Config):
 
         self._config['Scheduler'] = {'scheduler': default_scheduler}
 
+        self._config['ActiveProject'] = {'active_project': ''}
+
     def _config_wizard(self):
         """
         Procedure to guide the user after the initialization of the default config file.
@@ -79,11 +81,13 @@ class Config_camus(Config):
 
         click.echo('\n')
 
-        click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented...')
+        click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
+
+        click.echo('\n')
+
+        click.echo(f"""Currently, no project is active. See `camus project --help` to create a new project or switch to an existing one.""")
 
         click.echo(self._dashes)
         click.echo(f'camus configuration successful!')
         click.echo(f'To edit the config file, see camus config edit --help')
         click.echo(self._dashes)
-
-        self.print_config()

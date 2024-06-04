@@ -1,9 +1,8 @@
 import click
 
 from camus.db.project import Project
-from camus.db.db import DB
 
-@click.command('new', help="""Create a new project.
+@click.command('new', help="""Create a new project
 
         Example usage:
 
@@ -23,15 +22,57 @@ def new_project(label, description):
     proj = Project()
     proj.create_new_project(label=label, description=description)
 
-@click.command('list', help="List all projects")
+@click.command('list', help="""List all projects
+
+        Example usage:
+
+        camus project list
+        
+        """)
+
 def list_all_projects():
     """
     Lists all projects found in the ``projects`` table in the database.
 
     """
 
-    db = DB()
-    db.list_all_projects()
+    proj = Project()
+    proj.list_all_projects()
+
+@click.command('switch', help="""Change the active project using a given project label
+
+        Example usage: 
+        
+        camus project switch my_project_label
+
+        To see the list of existing projects, use: 
+        
+        camus project list
+        """)
+@click.argument('project_label')
+def switch_active_project(project_label):
+    """
+    Changes the active project using a given project label.
+
+    """
+
+    proj = Project()
+    proj.switch_active_project(label=project_label)
+
+@click.command('active', help="""Print which project is currently active
+        
+        Example usage:
+
+        camus project active
+
+        """)
+def print_active_project():
+    """
+    Prints the active project.
+    """
+
+    proj = Project()
+    proj.print_active_project()
 
 @click.group()
 def project_cli(name='project', help='Create, configure, query projects or switch working projects'):
@@ -42,6 +83,8 @@ def project_cli(name='project', help='Create, configure, query projects or switc
 
 project_cli.add_command(new_project)
 project_cli.add_command(list_all_projects)
+project_cli.add_command(switch_active_project)
+project_cli.add_command(print_active_project)
 
 def main():
     project_cli()

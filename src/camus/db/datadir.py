@@ -5,7 +5,7 @@ import click
 import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
-from camus.cfg.config_camus import Config_camus
+from camus.cfg.config_camus import ConfigCamus
 
 class Datadir:
     """
@@ -18,16 +18,16 @@ class Datadir:
         Get the base directory from the config file.
         """
 
-        config = Config_camus()
+        config = ConfigCamus()
 
         self.base = config._config['camusDataDirectory']['data_directory']
         self.projects = f'{self.base}/projects'
         
-        self.check_existence()
+        self._check_existence()
 
         self._dashes = camus_log.get_log_dashes()
 
-    def check_existence(self):
+    def _check_existence(self):
         """
         Checks the existence of the ``self.base`` directory; 
         the ``self._base_exists`` attribute is updated accordingly.
@@ -78,7 +78,7 @@ class Datadir:
         os.makedirs(f'{self.base}/projects')
         click.echo(f'Empty camus projects directory created at {self.base}/projects')
 
-        self.check_existence()
+        self._check_existence()
 
         click.echo(self._dashes)
 
@@ -112,7 +112,7 @@ class Datadir:
         Deletes all ``camus`` data directories.
         """
 
-        self.check_existence()
+        self._check_existence()
 
         if not self._base_exists:
             click.echo('Nothing to clean.')
@@ -120,4 +120,4 @@ class Datadir:
         else:
             camus_utils.delete_directory(self.base)
 
-        self.check_existence()
+        self._check_existence()

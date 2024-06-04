@@ -26,7 +26,7 @@ class DB:
         self._base = datadir.base
         
         self._db_path = f'{self._base}/camus.db'
-        self.check_existence()
+        self._check_existence()
 
         if self._db_exists:
 
@@ -35,7 +35,7 @@ class DB:
 
         self._dashes = camus_log.get_log_dashes()
 
-    def check_existence(self):
+    def _check_existence(self):
         """
         Checks the existence of the ``camus`` database;
         the ``self._db_exists`` attribute is updated accordingly
@@ -46,11 +46,11 @@ class DB:
 
     def create_database(self):
         """
-        If the camus database doesn't exist, creates it.
+        Creates the camus database.
 
         """
 
-        self.check_existence()
+        self._check_existence()
 
         if self._db_exists:
 
@@ -68,7 +68,7 @@ class DB:
                 click.echo(f'Failed to initialize the camus database at {self._db_path}. Do you have the required permissions to write to the requested directory? Exiting.')
                 sys.exit()
 
-            self.check_existence()
+            self._check_existence()
 
             if self._db_exists:
 
@@ -130,7 +130,7 @@ class DB:
             Path to the project directory
         proj_config : str
             Path to the project configuration file
-        proj_config : str
+        proj_log : str
             Path to the project log file
         proj_description : None
             Optional project description
@@ -154,41 +154,31 @@ class DB:
 
         self._con.commit()
 
-    def list_all_projects(self):
+        click.echo(f'Project entry "{proj_label}" added to the camus database.')
+
+    def _get_projects(self):
         """
-        Lists all projects found in the ``projects`` table.
+        Stores project data to ``self._x``, where x = {proj_labels, proj_directories, proj_configs, proj_logs, proj_descriptions}.
 
         """
 
-        all_projects_res = self._cur.execute("""
-        SELECT proj_label, proj_description FROM projects ORDER BY proj_label ASC
-        """)
+        projects_data = self._cur.execute("""
+        SELECT proj_label, proj_directory, proj_config, proj_log, proj_description FROM projects ORDER BY proj_label ASC
+        """).fetchall()
 
-        all_projects = all_projects_res.fetchall()
+        self._proj_labels = []
+        self._proj_directories = []
+        self._proj_configs = []
+        self._proj_logs = []
+        self._proj_descriptions = []
 
-        max_project_length = len('Label')
-        max_description_length = len('Description')
+        for project_data in projects_data:
 
-        for project, description in all_projects:
-
-            if len(project) > max_project_length:
-                max_project_length = len(project)
-
-            if len(description) > max_description_length:
-                max_description_length = len(description)
-
-        max_project_length += 8
-
-        dashes = '-' * (max_project_length + max_description_length + 1)
-
-        click.echo(dashes)
-        click.echo('{:<{max_project_length}} {:<{max_project_length}}'.format('Label', 'Description', max_project_length=max_project_length))
-        click.echo(dashes)
-
-        for project_description in all_projects:
-            click.echo('{:<{max_project_length}} {:<{max_project_length}}'.format(*project_description, max_project_length=max_project_length))
-
-        click.echo(dashes)
+            self._proj_labels.append(project_data[0])
+            self._proj_directories.append(project_data[1])
+            self._proj_configs.append(project_data[2])
+            self._proj_logs.append(project_data[3])
+            self._proj_descriptions.append(project_data[4])
 
     def clean_database(self):
         """
@@ -196,10 +186,53 @@ class DB:
 
         """
 
-        self.check_existence()
+        self._check_existence()
 
         if not self._db_exists:
             click.echo(f'camus database at {self._db_path} does not exist.')
 
         else:
             camus_utils.delete_file(self._db_path)
+
+    def clean_db_entry(self, table_name, row_label):
+        """
+        Deletes the row that starts with ``row_label`` from the table ``table_name``.
+
+        Parameters
+        ----------
+        table_name : str
+            Name of the table from which a row is being deleted
+        row_label : str
+            Value of the first entry of the row that is being deleted
+        
+        """
+
+        column_name = self._cur.execute(f'PRAGMA table_info({table_name})').fetchall()[0][1]
+
+        data = ({
+            'row_label': row_label,
+            })
+
+        entry = self._cur.execute(f"""
+        SELECT {column_name} FROM {table_name} WHERE {column_name}=:row_label
+        """, data).fetchall()
+
+        if entry:
+
+            self._cur.execute(f"""
+            DELETE FROM {table_name} WHERE {column_name}=:row_label 
+            """, data)
+
+            self._con.commit()
+
+            entry = self._cur.execute(f"""
+            SELECT {column_name} FROM {table_name} WHERE {column_name}=:row_label
+            """, data).fetchall()
+
+            if not entry:
+                click.echo(f'Deleted "{row_label}" database entry from the "{table_name}" table.')
+            else:
+                click.echo(f'Failed to delete "{row_label}" database entry from the "{table_name}" table.')
+
+        else:
+            click.echo(f'Database entry "{row_label}" from the "{table_name}" table does not exist.')
