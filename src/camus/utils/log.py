@@ -39,9 +39,6 @@ def init_logger(logname='camus', logdir=None):
 
     logger.setLevel(logging.INFO) 
 
-    stream_handler = logging.StreamHandler(sys.stdout)
-    logger.addHandler(stream_handler)
-
     file_handler = logging.FileHandler(f'{logdir}{logname}')
     file_handler.setLevel(logging.INFO)
     logger.addHandler(file_handler)
@@ -86,16 +83,16 @@ def get_logger_fh_path(logger):
     else:
         return 'No logger handlers found.'
 
-def camus_start(start_datetime, logpath=None):
+def camus_start(start_datetime=None, start_message=None):
     """
     Report on the beginning of ``camus`` execution.
 
     Parameters
     ----------
-    start_datetime : str
+    start_datetime : str | None
         Starting datetime in ``%Y%m%d-%H%M%S`` format
-    logpath : str | None
-        Path to the logfile
+    start_message : str | None
+        Message to prepend to the start_datetime. If not given, 'camus started on' will be used
 
     Returns
     ----------
@@ -104,6 +101,12 @@ def camus_start(start_datetime, logpath=None):
  
     """
 
+    if not start_datetime:
+        start_datetime = camus_utils.get_current_datetime()
+
+    if not start_message:
+        start_message = 'camus started on'
+
     start_report = ''
 
     log_dashes = get_log_dashes()
@@ -111,14 +114,8 @@ def camus_start(start_datetime, logpath=None):
 
     start_report += logo + '\n'
     start_report += log_dashes + '\n'
-    start_report += f'camus started on {start_datetime}\n'
+    start_report += f'{start_message} {start_datetime}\n'
     start_report += log_dashes 
-
-    if logpath:
-
-        start_report += '\n'
-        start_report += f'Logfile: {logpath}\n'
-        start_report += log_dashes
 
     return start_report
 
@@ -213,6 +210,7 @@ def get_logo():
 #  \___/_/ |_/_/  /_/\____/___/  
 #                                
 #                   v={__version__}
+#
 """
 
     return logo

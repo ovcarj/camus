@@ -23,6 +23,8 @@ class Project:
         ----------
         label : str
             If given, the project data with the given label is loaded
+        load_active : bool
+            If True, load the currently active project
 
         """
 
@@ -31,7 +33,7 @@ class Project:
         self._camus_cfg = ConfigCamus()
 
         self._db._get_projects()
-        self._get_active_project 
+        self._get_active_project()
 
         self.label = label
 
@@ -72,6 +74,8 @@ class Project:
                 self.config = self._db._proj_configs[proj_index]
                 self.log = self._db._proj_logs[proj_index]
                 self.description = self._db._proj_descriptions[proj_index]
+
+                self._get_logger()
 
             else:
                 click.echo(self._dashes)
@@ -151,9 +155,25 @@ class Project:
             self._check_existence()
 
             if self._proj_exists:
+
                 click.echo(self._dashes)
                 click.echo(f'To activate the created project, type:\n') 
                 click.echo(f'camus project switch {self.label}')
+
+                self._get_logger()
+
+                self._write_2_log(camus_log.camus_start(start_message=f'Project {self.label} created on'))
+
+                space_length = 15
+
+                if self.description:
+                    self._write_2_log('{:<{space_length}} {:<{space_length}}'.format('Description', self.description, space_length=space_length))
+
+                self._write_2_log('{:<{space_length}} {:<{space_length}}'.format('Directory', self.dir, space_length=space_length))
+                self._write_2_log('{:<{space_length}} {:<{space_length}}'.format('Config', self.config, space_length=space_length))
+                self._write_2_log('{:<{space_length}} {:<{space_length}}'.format('Log', self.log, space_length=space_length))
+
+                self._write_2_log(self._dashes)
 
             click.echo(self._dashes)
 
@@ -178,8 +198,10 @@ class Project:
 
         click.echo(dashes)
         click.echo(f'Active project: {self.active_project}')
+
         if self.description:
             click.echo(f'{self.description}')
+
         click.echo(dashes)
 
         click.echo('{:<{space_length}} {:<{space_length}}'.format('Directory', self.dir, space_length=space_length))
@@ -289,6 +311,7 @@ class Project:
     def _proj_entry_exists(self):
         """
         Checks if ``self.label`` entry exists in the ``projects`` table of the Camus database. The self._entry_exists attribute is updated accordingly.
+
         """
 
         self._db._get_projects()
@@ -302,6 +325,7 @@ class Project:
     def _check_existence(self):
         """
         Checks if both the project directory and project entry of ``self.label``  exist. The ``self._proj_exists`` attribute is updated accordingly.
+
         """
 
         self._proj_dir_exists()
@@ -313,9 +337,46 @@ class Project:
         else:
             self._proj_exists = False
 
+    def _get_logger(self):
+        """
+        Gets the logger object from the ``self.log`` path
+
+        """
+
+        log_split = self.log.rpartition('/')
+        logdir = log_split[0]
+        logname = log_split[-1]
+
+        self._logger = camus_log.init_logger(logdir=logdir, logname=logname)
+
+    def _write_2_log(self, logtext):
+        """
+        Writes to the log file at the ``self.log`` path.
+
+        Parameters
+        ----------
+        logtext : str
+            Text to write in the log file
+
+        """
+
+        self._logger.info(logtext)
+
+    def print_log(self):
+        """
+        Prints the log file at ``self.log`` path.
+
+        """
+
+        with open(f'{self.log}', 'r') as f:
+            lines = f.read()
+
+        click.echo(lines)
+
     def delete_project(self, label):
         """
         Deletes the directory and database entry of the project with the ``label`` project label.
+
         """
 
         self.load_project(label=label)

@@ -28,7 +28,6 @@ def new_project(label, description):
         camus project list
         
         """)
-
 def list_all_projects():
     """
     Lists all projects found in the ``projects`` table in the database.
@@ -74,6 +73,22 @@ def print_active_project():
     proj = Project()
     proj.print_active_project()
 
+@click.command('log', help="""Print the log of the currently active project
+
+        Example usage:
+
+        camus project log
+
+        """)
+def print_active_log():
+    """
+    Prints the log of the active project
+
+    """
+
+    proj = Project(load_active=True)
+    proj.print_log()
+
 @click.group()
 def project_cli(name='project', help='Create, configure, query projects or switch working projects'):
     """
@@ -85,6 +100,7 @@ project_cli.add_command(new_project)
 project_cli.add_command(list_all_projects)
 project_cli.add_command(switch_active_project)
 project_cli.add_command(print_active_project)
+project_cli.add_command(print_active_log)
 
 def main():
     project_cli()
