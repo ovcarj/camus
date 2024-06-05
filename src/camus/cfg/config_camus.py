@@ -3,6 +3,8 @@ import click
 
 import platformdirs
 
+import camus.utils.log as camus_log
+
 from camus.cfg.config import Config
 
 class ConfigCamus(Config):
@@ -28,12 +30,17 @@ class ConfigCamus(Config):
         """
 
         default_base = platformdirs.user_data_dir(appname='camus')
-        default_lammps_exe = '/path/to/lammps/executable'
+        
+        default_active_project = ''
+
+        default_lammps_exe = ''
         default_lammps_run_command = ''
         default_lammps_flags = ''
         default_scheduler = 'Slurm'
 
         self._config['camusDataDirectory'] = {'data_directory': default_base}
+
+        self._config['ActiveProject'] = {'active_project': default_active_project}
 
         self._config['LAMMPS'] = {
                 'lammps_exe': default_lammps_exe,
@@ -42,8 +49,6 @@ class ConfigCamus(Config):
                 }
 
         self._config['Scheduler'] = {'scheduler': default_scheduler}
-
-        self._config['ActiveProject'] = {'active_project': ''}
 
     def _config_wizard(self):
         """
@@ -58,36 +63,24 @@ class ConfigCamus(Config):
         if len(new_path) > 0:
             self.edit_config_file(update_dict={'camusDataDirectory': {'data_directory': new_path}})
 
-        click.echo(f'camus uses LAMMPS to run ML models.')
+        lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a global LAMMPS configuration now? [Y/n]\n')
 
-        new_lammps_exe = input(f'Enter the path to the LAMMPS executable or press "Enter" if you wish to provide the path later.\n')
+        if lammps_setup == 'Y':
+            self._lammps_wizard()
+            click.echo(self._dashes)
 
-        if len(new_lammps_exe) > 0:
-            self.edit_config_file(update_dict={'LAMMPS': {'lammps_exe': new_lammps_exe}})
+        else:
+            pass
 
-        click.echo('\n')
-
-        new_lammps_run_command = input(f'Provide a command which will be used as a default to run the LAMMPS executable (e.g. mpirun -np 4) or press "Enter" to skip this step.\n')
-
-        if len(new_lammps_run_command) > 0:
-            self.edit_config_file(update_dict={'LAMMPS': {'lammps_run_command': new_lammps_run_command}})
-
-        click.echo('\n')
-
-        new_lammps_flags = input(f'Provide flags you wish to use to run LAMMPS (e.g. -sf omp -pk omp 1) or press "Enter" to not append any flags.\n')
-
-        if len(new_lammps_flags) > 0:
-            self.edit_config_file(update_dict={'LAMMPS': {'lammps_flags': new_lammps_flags}})
-
-        click.echo('\n')
 
         click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
 
-        click.echo('\n')
+        click.echo(self._dashes)
 
         click.echo(f"""Currently, no project is active. See `camus project --help` to create a new project or switch to an existing one.""")
 
         click.echo(self._dashes)
+
         click.echo(f'camus configuration successful!')
         click.echo(f'To edit the config file, see camus config edit --help')
         click.echo(self._dashes)

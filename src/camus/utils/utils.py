@@ -1,5 +1,4 @@
 """
-
 Various Python-related utility functions.
 
 """
@@ -18,6 +17,7 @@ import matplotlib.pyplot as plt
 import click
 
 import pathlib
+
 from shutil import make_archive, rmtree
 from datetime import datetime
 from random import randint

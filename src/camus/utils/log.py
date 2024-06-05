@@ -2,6 +2,8 @@ import sys
 import os
 import logging
 
+import click
+
 import camus.utils.utils as camus_utils
 
 from camus import __version__
@@ -151,6 +153,42 @@ def camus_end(start_datetime):
     end_report += f'Total runtime: {runtime}'
 
     return end_report
+
+def ask_yes_no(question):
+    """
+    Forces the user to type 'Y' or 'n' and returns the answer.
+
+    Parameters
+    ----------
+    question : str
+        Question to ask the user
+
+    Returns
+    -------
+    answer : str
+        'Y' or 'n'
+
+    """
+
+    dashes = get_log_dashes()
+
+    input_ok = False
+
+    while(input_ok == False):
+
+        answer = input(question)
+
+        click.echo(dashes)
+
+        try:
+            assert (answer == 'Y' or answer == 'n')
+            input_ok = True
+
+        except AssertionError:
+            click.echo('Please enter "Y" or "n".')
+            click.echo(dashes)
+
+    return answer
 
 def get_log_dashes():
     """

@@ -91,24 +91,11 @@ class DB:
         
         input_ok = False
 
-        while(input_ok == False):
-
-            proceed = input(f'Do you want to proceed with the current database? [Y/n]\n')
-
-            click.echo(self._dashes)
-
-            try:
-                assert (proceed == 'Y' or proceed == 'n')
-                input_ok = True
-
-            except AssertionError:
-                click.echo('Please enter "Y" or "n".')
-                click.echo(self._dashes)
+        proceed = camus_log.ask_yes_no(f'Do you want to proceed with the current database? [Y/n]\n')
 
         if proceed == 'Y':
 
             click.echo('Proceeding with the current camus database.')
-            click.echo(self._dashes)
 
         elif proceed == 'n':
 

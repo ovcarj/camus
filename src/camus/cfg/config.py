@@ -107,14 +107,6 @@ class Config(abc.ABC):
 
             self.print_config()
             
-    @abc.abstractmethod
-    def _config_wizard(self):
-        """
-        A procedure to guide the user through editing the config file after it was initialized.
-        """
-
-        pass
-
     def _handle_config_exists(self):
         """
         Handles the case when the user tries to run ``self.create_config_file()`` with a preexisting config file.
@@ -125,19 +117,7 @@ class Config(abc.ABC):
         
         input_ok = False
 
-        while(input_ok == False):
-
-            proceed = input(f'Do you want to proceed with the current config file? [Y/n]\n')
-
-            click.echo(self._dashes)
-
-            try:
-                assert (proceed == 'Y' or proceed == 'n')
-                input_ok = True
-
-            except AssertionError:
-                click.echo('Please enter "Y" or "n".')
-                click.echo(self._dashes)
+        proceed = camus_log.ask_yes_no('Do you want to proceed with the current config file? [Y/n]\n')
 
         if proceed == 'Y':
 
@@ -256,6 +236,38 @@ class Config(abc.ABC):
             
         else:
             click.echo(f'Invalid config option "{subsection}"')
+
+    @abc.abstractmethod
+    def _config_wizard(self):
+        """
+        A procedure to guide the user through editing the config file after it was initialized.
+        """
+
+        pass
+
+    def _lammps_wizard(self):
+        """
+        A procedure to guide the user through LAMMPS setup.
+        """
+
+        new_lammps_exe = input(f'Enter the path to the LAMMPS executable or press "Enter" if you wish to provide the path later.\n')
+
+        if len(new_lammps_exe) > 0:
+            self.edit_config_file(update_dict={'LAMMPS': {'lammps_exe': new_lammps_exe}})
+
+        click.echo('\n')
+
+        new_lammps_run_command = input(f'Provide a command which will be used as a default to run the LAMMPS executable (e.g. mpirun -np 4) or press "Enter" to skip this step.\n')
+
+        if len(new_lammps_run_command) > 0:
+            self.edit_config_file(update_dict={'LAMMPS': {'lammps_run_command': new_lammps_run_command}})
+
+        click.echo('\n')
+
+        new_lammps_flags = input(f'Provide flags you wish to use to run LAMMPS (e.g. -sf omp -pk omp 1) or press "Enter" to not append any flags.\n')
+
+        if len(new_lammps_flags) > 0:
+            self.edit_config_file(update_dict={'LAMMPS': {'lammps_flags': new_lammps_flags}})
 
     def clean_config(self):
         """
