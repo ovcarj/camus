@@ -7,9 +7,8 @@ from camus.db.project import Project
         Example usage:
 
         camus project new -l example_label -d "optional description"
-        camus project new
 
-        If the -l flag is not given, a project wizard will guide the user through the project creation process.
+        If the -f flag is not given, a project wizard will guide the user through the project configuration process.
         """)
 @click.option('-l', '--label', default=None, help="New project label")
 @click.option('-d', '--description', default=None, help="Optional project description")
@@ -59,8 +58,8 @@ def switch_active_project(project_label):
     proj = Project()
     proj.switch_active_project(label=project_label)
 
-@click.command('active', help="""Print which project is currently active
-        
+@click.command('active', help="""Print info on currently active project
+
         Example usage:
 
         camus project active
@@ -69,6 +68,7 @@ def switch_active_project(project_label):
 def print_active_project():
     """
     Prints the active project.
+
     """
 
     proj = Project()

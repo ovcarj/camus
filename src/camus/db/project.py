@@ -1,4 +1,5 @@
 import sys
+import os
 import click
 
 import camus.utils.log as camus_log
@@ -165,12 +166,26 @@ class Project:
 
     def print_active_project(self):
         """
-        Print the active project.
+        Print information about the active project.
         """
 
         self._get_active_project()
 
-        click.echo(f'Currently active project: {self.active_project}')
+        self.load_project(self.active_project)
+
+        space_length = 12
+        dashes = '-' * (len('Log') + len(self.log) + space_length - 2)
+
+        click.echo(dashes)
+        click.echo(f'Active project: {self.active_project}')
+        if self.description:
+            click.echo(f'{self.description}')
+        click.echo(dashes)
+
+        click.echo('{:<{space_length}} {:<{space_length}}'.format('Directory', self.dir, space_length=space_length))
+        click.echo('{:<{space_length}} {:<{space_length}}'.format('Config', self.config, space_length=space_length))
+        click.echo('{:<{space_length}} {:<{space_length}}'.format('Log', self.log, space_length=space_length))
+        click.echo(dashes)
 
     def switch_active_project(self, label):
         """
@@ -202,6 +217,16 @@ class Project:
             click.echo(self._dashes)
             click.echo(f'Could not activate project "{self.label}".')
             click.echo(self._dashes)
+
+    def _goto_active_project(self):
+        """
+        Changes directory to the active project directory.
+        """
+
+        self._get_active_project()
+        self.load_project(self.active_project)
+
+        os.chdir(self.dir)
 
     def list_all_projects(self):
         """
