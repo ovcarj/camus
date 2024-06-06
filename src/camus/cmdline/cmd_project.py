@@ -6,20 +6,23 @@ from camus.db.project import Project
 
         Example usage:
 
-        camus project new -l example_label -d "optional description"
+        camus project new -l example_label -d "Optional description"
 
-        If the -f flag is not given, a project wizard will guide the user through the project configuration process.
+        camus project new -l abc -f projconfig.cfg
+
+        If the -f flag is not given, the user will be guided through the project configuration process.
         """)
 @click.option('-l', '--label', default=None, help="New project label")
 @click.option('-d', '--description', default=None, help="Optional project description")
-def new_project(label, description):
+@click.option('-f', '--cfgfile', default=None, help="Optional path to a project config file")
+def new_project(label, description, cfgfile):
     """
-    Create a new project, optionally with a given label and description.
+    Create a new project, with a given label and optional description and config file.
 
     """
 
     proj = Project()
-    proj.create_new_project(label=label, description=description)
+    proj.create_new_project(label=label, description=description, config_file=cfgfile)
 
 @click.command('list', help="""List all projects
 

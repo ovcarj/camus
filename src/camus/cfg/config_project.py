@@ -72,7 +72,7 @@ class ConfigProject(Config):
             click.echo(self._dashes)
         
         else:
-            pass
+            click.echo('Using default project configuration.')
 
         click.echo(f'Project configuration successful!')
         click.echo(f'To edit the active project config file, see camus project config --help')

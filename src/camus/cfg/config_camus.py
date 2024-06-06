@@ -78,7 +78,7 @@ class ConfigCamus(Config):
 
         click.echo(self._dashes)
 
-        click.echo(f"""Currently, no project is active. See `camus project --help` to create a new project or switch to an existing one.""")
+        click.echo(f"""See `camus project --help` to create a new project or switch to an existing one.""")
 
         click.echo(self._dashes)
 

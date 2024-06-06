@@ -10,6 +10,8 @@ from camus.db.datadir import Datadir
 from camus.cfg.config_camus import ConfigCamus
 from camus.cfg.config_project import ConfigProject
 
+from shutil import copyfile
+
 class Project:
     """
     Class which handles creation, deletion, configuring, logging and querying projects.
@@ -86,7 +88,7 @@ class Project:
         else:
             click.echo('Cannot load project: no project label is provided.')
 
-    def create_new_project(self, label, description=None):
+    def create_new_project(self, label, description=None, config_file=None):
         """
         Creates a new project with a given label.
 
@@ -96,6 +98,8 @@ class Project:
             Label for the new project
         description : None | str
             Optional description of the project
+        config_file : None | str
+            Path to a project config file. If given, the file will be copied to the project directory
 
         """
 
@@ -158,9 +162,6 @@ class Project:
             if self._proj_exists:
 
                 click.echo(self._dashes)
-                click.echo(f'To activate the created project, type:\n') 
-                click.echo(f'camus project switch {self.label}')
-                click.echo(self._dashes)
 
                 self._get_logger()
 
@@ -177,9 +178,21 @@ class Project:
 
                 self._write_2_log(self._dashes)
 
-                cfg = ConfigProject(self.config)
-                cfg.create_config_file()
+                if config_file:
 
+                    click.echo(f'Using {config_file} for project configuration.')
+                    click.echo(self._dashes)
+
+                    copyfile(src=config_file, dst=self.config)
+
+                else:
+                    cfg = ConfigProject(self.config)
+                    cfg.create_config_file()
+
+                click.echo(f'To activate the created project, type:\n') 
+                click.echo(f'camus project switch {self.label}')
+                click.echo(self._dashes)
+ 
     def _get_active_project(self):
         """
         Read the main camus config file to get the active project.
@@ -237,7 +250,7 @@ class Project:
             self._camus_cfg.edit_config_file(update_dict)
 
             self._get_active_project()
-            self.print_active_project()
+            self._print_active_project()
 
         else:
             click.echo(self._dashes)
