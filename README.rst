@@ -14,7 +14,7 @@ The following installation procedure was tested:
 
         conda create -n camus python=3.10
         conda activate camus
-        python -m pip install -e .
+        pip install -e .
 
 After installation, run
 
