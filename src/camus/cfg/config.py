@@ -32,8 +32,11 @@ class Config(abc.ABC):
 
         self._config = configparser.ConfigParser()
 
+        if not config_dir.endswith('/'):
+            config_dir += '/'
+
         self._config_dir = config_dir
-        self._config_path = f'{self._config_dir}/{config_name}'
+        self._config_path = f'{self._config_dir}{config_name}'
 
         self.check_existence()
 
@@ -204,6 +207,7 @@ class Config(abc.ABC):
                         with open(self._config_path, 'w') as configfile:
                             self._config.write(configfile)
 
+                        click.echo(f'Edited {self._config_path}\n')
                         click.echo(f'[{section}]: {subsection} updated to {value}')
                         self.read_config()
 

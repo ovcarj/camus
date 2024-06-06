@@ -6,6 +6,7 @@ from camus.cfg.config_camus import ConfigCamus
 def show_config():
     """
     Prints the ``camus`` config file.
+
     """
 
     cfg = ConfigCamus()
@@ -34,6 +35,7 @@ def show_config():
 def edit_config(option, value):
     """
     Edit the ``camus`` config file by passing option and new value
+
     """
 
     value_str = ' '.join(value)
@@ -45,6 +47,7 @@ def edit_config(option, value):
 def config_cli(name='config', help='Print and edit the main camus config file'):
     """
     CLI for printing and editing the camus config file
+
     """
     pass
 

@@ -17,6 +17,7 @@ class ConfigCamus(Config):
     def __init__(self):
         """
         Check for the existence of the config file. If it exists, read its contents.
+
         """
 
         config_dir = platformdirs.user_config_dir(appname='camus')
@@ -26,7 +27,8 @@ class ConfigCamus(Config):
 
     def define_default_values(self):
         """
-        Defines the default values for the main camus config file.
+        Defines the default values for the main ``camus`` config file.
+
         """
 
         default_base = platformdirs.user_data_dir(appname='camus')
@@ -71,7 +73,6 @@ class ConfigCamus(Config):
 
         else:
             pass
-
 
         click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
 

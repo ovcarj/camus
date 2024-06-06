@@ -8,6 +8,7 @@ import camus.utils.utils as camus_utils
 from camus.db.db import DB
 from camus.db.datadir import Datadir
 from camus.cfg.config_camus import ConfigCamus
+from camus.cfg.config_project import ConfigProject
 
 class Project:
     """
@@ -159,6 +160,7 @@ class Project:
                 click.echo(self._dashes)
                 click.echo(f'To activate the created project, type:\n') 
                 click.echo(f'camus project switch {self.label}')
+                click.echo(self._dashes)
 
                 self._get_logger()
 
@@ -175,22 +177,24 @@ class Project:
 
                 self._write_2_log(self._dashes)
 
-            click.echo(self._dashes)
+                cfg = ConfigProject(self.config)
+                cfg.create_config_file()
 
     def _get_active_project(self):
         """
         Read the main camus config file to get the active project.
+
         """
 
         self.active_project = self._camus_cfg._config['ActiveProject']['active_project']
 
-    def print_active_project(self):
+    def _print_active_project(self):
         """
         Print information about the active project.
+
         """
 
         self._get_active_project()
-
         self.load_project(self.active_project)
 
         space_length = 12
@@ -362,7 +366,7 @@ class Project:
 
         self._logger.info(logtext)
 
-    def print_log(self):
+    def _print_log(self):
         """
         Prints the log file at ``self.log`` path.
 
@@ -372,6 +376,36 @@ class Project:
             lines = f.read()
 
         click.echo(lines)
+
+    def _edit_active_config_by_subsection(self, subsection, value):
+        """
+        Edits the contents of the config file of the active project by passing only the subsection and the value, while the section is automatically found.
+
+        Parameters
+        ----------
+        subsection : str
+            Subsection in the config file
+        value : str | float | int
+            Value that the subsection is updated to
+
+        """
+
+        self._get_active_project()
+        self.load_project(self.active_project)
+
+        cfg = ConfigProject(self.config)
+        cfg.edit_config_by_subsection(subsection=subsection, value=value)
+
+    def _print_active_config(self):
+        """
+        Prints the contents of the config file of the active project.
+        """
+
+        self._get_active_project()
+        self.load_project(self.active_project)
+
+        cfg = ConfigProject(self.config)
+        cfg.print_config()
 
     def delete_project(self, label):
         """
