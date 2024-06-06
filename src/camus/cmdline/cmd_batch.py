@@ -144,7 +144,7 @@ def edit_config(option, value):
 @click.group()
 def config(name='config', help="""Print/edit the config file of the currently active batch."""):
         """
-        Print/edit the config file of the currently active batch.
+        Print/edit the config file of the currently active batch
 
         Example usage:
 
@@ -157,7 +157,7 @@ def config(name='config', help="""Print/edit the config file of the currently ac
 @click.group()
 def batch_cli(name='batch', help='Create, configure, query batches or switch working batches'):
     """
-    Create, configure and query batches in the active project.
+    Create, configure and query batches in the active project
 
     """
     pass
