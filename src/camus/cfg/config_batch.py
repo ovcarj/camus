@@ -5,38 +5,38 @@ import camus.utils.log as camus_log
 
 from camus.cfg.config import Config
 
-class ConfigProject(Config):
+class ConfigBatch(Config):
     """
     Class which handles creation, deletion, reading and editing of the 
-    project config files.
+    batch config files.
     """
 
-    def __init__(self, project_config_path):
+    def __init__(self, batch_config_path):
         """
         Check for the existence of the config file. If it exists, read its contents.
 
         Parameters
         ----------
-        project_config_path : str
-            Path to the project config file
+        batch_config_path : str
+            Path to the batch config file
 
         """
 
-        project_cfg_split = project_config_path.rpartition('/')
+        batch_cfg_split = batch_config_path.rpartition('/')
 
-        config_dir = project_cfg_split[0]
-        config_name = project_cfg_split[-1]
+        config_dir = batch_cfg_split[0]
+        config_name = batch_cfg_split[-1]
 
         super().__init__(config_dir=config_dir, config_name=config_name,  
-                help_message='Check "camus project config edit --help" for instructions on editing the project config file.')
+                help_message='Check "camus batch config edit --help" for instructions on editing the batch config file.')
 
     def define_default_values(self):
         """
-        Defines the default values for a project config file.
+        Defines the default values for a batch config file.
 
         """
 
-        default_active_batch = ''
+        default_calculation_type = ''
 
         default_lammps_exe = ''
         default_lammps_run_command = ''
@@ -44,7 +44,9 @@ class ConfigProject(Config):
 
         default_scheduler = ''
 
-        self._config['ActiveBatch'] = {'active_batch': default_active_batch}
+        self._config['CALCULATION'] = {
+                'calc_type_placeholder': default_calculation_type
+                }
 
         self._config['LAMMPS'] = {
                 'lammps_exe': default_lammps_exe,
@@ -59,11 +61,11 @@ class ConfigProject(Config):
         Procedure to guide the user after the initialization of the default config file.
         """
 
-        project_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide configuration now? [Y/n]\n')
+        batch_setup = camus_log.ask_yes_no(f'Do you wish to create a batch-wide configuration now? [Y/n]\n')
 
-        if project_setup == 'Y':
+        if batch_setup == 'Y':
 
-            lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide LAMMPS configuration now? [Y/n]\n')
+            lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a batch-wide LAMMPS configuration now? [Y/n]\n')
 
             if lammps_setup == 'Y':
                 self._lammps_wizard()
@@ -77,8 +79,8 @@ class ConfigProject(Config):
             click.echo(self._dashes)
         
         else:
-            click.echo('Using default project configuration.')
+            click.echo('Using default batch configuration.')
 
-        click.echo(f'Project configuration successful!')
-        click.echo(f'To edit the active project config file, see camus project config --help')
+        click.echo(f'Batch configuration successful!')
+        click.echo(f'To edit the active batch config file, see camus batch config --help')
         click.echo(self._dashes)

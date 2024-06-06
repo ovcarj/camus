@@ -116,7 +116,8 @@ def camus_start(start_datetime=None, start_message=None):
 
     start_report += logo + '\n'
     start_report += log_dashes + '\n'
-    start_report += f'{start_message} {start_datetime}\n'
+    start_report += timestamp_message(message=start_message, datetime=start_datetime)
+    start_report += '\n'
     start_report += log_dashes 
 
     return start_report
@@ -153,6 +154,32 @@ def camus_end(start_datetime):
     end_report += f'Total runtime: {runtime}'
 
     return end_report
+
+def timestamp_message(message, datetime=None):
+    """
+    Return a string of form ``f'{message} {datetime}'``
+
+    Parameters
+    ----------
+    message : str
+        Message to be printed
+    datetime : str | None
+        Datetime to be printed. If None, use current datetime
+
+    Returns
+    -------
+    timestamp_message : str
+        A string of form f'{message} {datetime}'
+
+    """
+
+    if not datetime:
+        datetime = camus_utils.get_current_datetime()
+
+    timestamp_message = f'{message} {datetime}'
+
+    return timestamp_message
+
 
 def ask_yes_no(question):
     """

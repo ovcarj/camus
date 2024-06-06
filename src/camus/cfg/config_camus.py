@@ -38,6 +38,7 @@ class ConfigCamus(Config):
         default_lammps_exe = ''
         default_lammps_run_command = ''
         default_lammps_flags = ''
+
         default_scheduler = 'Slurm'
 
         self._config['camusDataDirectory'] = {'data_directory': default_base}

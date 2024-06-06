@@ -60,11 +60,11 @@ def switch_active_project(project_label):
     proj = Project()
     proj.switch_active_project(label=project_label)
 
-@click.command('active', help="""Print info on currently active project
+@click.command('show', help="""Print info on currently active project
 
         Example usage:
 
-        camus project active
+        camus project show
 
         """)
 def print_active_project():
@@ -157,7 +157,7 @@ def config(name='config', help="""Print/edit the config file of the currently ac
 @click.group()
 def project_cli(name='project', help='Create, configure, query projects or switch working projects'):
     """
-    CLI for creating, deleting and querying camus projects.
+    Create, configure and query camus projects.
 
     """
     pass

@@ -1,4 +1,5 @@
 import os
+import sys
 import platformdirs
 import click
 
@@ -11,11 +12,13 @@ class Datadir:
     """
     Class which handles creation, deletion and checking of the
     ``camus`` data directory, which is found at ``platformdirs.user_data_dir(appname='camus')``.
+
     """
 
     def __init__(self):
         """
         Get the base directory from the config file.
+
         """
 
         config = ConfigCamus()
@@ -31,6 +34,7 @@ class Datadir:
         """
         Checks the existence of the ``self.base`` directory; 
         the ``self._base_exists`` attribute is updated accordingly.
+
         """
 
         self._base_exists = camus_utils.directory_exists(self.base)
@@ -39,6 +43,7 @@ class Datadir:
         """
         Creates ``camus`` data directories. If ``self.base`` already exists, 
         the user is prompted if they want to overwrite the directory.
+
         """
 
         input_ok = False
@@ -82,34 +87,42 @@ class Datadir:
 
         click.echo(self._dashes)
 
-    def create_project_dir(self, project_dir):
+    def _create_dir(self, dir_path, dir_type):
         """
-        Creates a directory ``project_dir``.
+        Creates a directory ``dir_path``. Used to create ``dir_type = {'Project', 'Batch'}`` directories. #TODO probably also Calculation...
 
         Parameters
         ----------
-        project_dir : str
-            Path to the project directory to be created
+        dir_path : str
+            Path to the directory to be created
+        dir_type : str
+            Must be 'Project' or 'Batch'
+
         """
 
-        try:
-            os.makedirs(name=project_dir, exist_ok=False)
+        if not ((dir_type == 'Project') or (dir_type == 'Batch')):
+            click.echo(f'dir_type must be "Project" or "Batch". Exiting.')
+            sys.exit()
 
-            if camus_utils.directory_exists(project_dir):
-                click.echo(f'Project directory created at {project_dir}')
+        try:
+            os.makedirs(name=dir_path, exist_ok=False)
+
+            if camus_utils.directory_exists(dir_path):
+                click.echo(f'{dir_type} directory created at {dir_path}')
 
             else:
-                click.echo(f'Failed to create directory {project_dir}. Do you have the required permissions?')
+                click.echo(f'Failed to create directory {dir_path}. Do you have the required permissions?')
                 sys.exit()
 
         except OSError:
-            click.echo(f'Project already exists at {project_dir}' )
+            click.echo(f'{dir_type} already exists at {dir_path}' )
             click.echo('Stopping.')
             sys.exit()
 
     def clean_all_directories(self):
         """
         Deletes all ``camus`` data directories.
+
         """
 
         self._check_existence()

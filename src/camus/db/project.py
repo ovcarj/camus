@@ -53,12 +53,12 @@ class Project:
     def load_project(self, label=None):
         """
         Search for the database entry of the project with the given ``label`` 
-        and set the self.x attributes, where x = {label, dir, config, log, description}
+        and set the ``self.x`` attributes, where x = {label, dir, config, log, description}
 
         Parameters
         ----------
         label : None | str
-            The project data with the given label is loaded. If ``None``, try to use ``self.label``
+            The project data with the given label is loaded. If ``None``, ``self.label`` is used
 
         """
 
@@ -77,6 +77,8 @@ class Project:
                 self.config = self._db._proj_configs[proj_index]
                 self.log = self._db._proj_logs[proj_index]
                 self.description = self._db._proj_descriptions[proj_index]
+
+                self._get_active_batch()
 
                 self._get_logger()
 
@@ -147,7 +149,7 @@ class Project:
 
             click.echo(self._dashes)
 
-            self._datadir.create_project_dir(project_dir=self.dir)
+            self._datadir._create_dir(dir_path=self.dir, dir_type='Project')
 
             self._db.create_new_project(
                     proj_label=self.label, 
@@ -200,6 +202,14 @@ class Project:
         """
 
         self.active_project = self._camus_cfg._config['ActiveProject']['active_project']
+    def _get_active_batch(self):
+        """
+        Read the project config file to get the active batch.
+
+        """
+
+        cfg = ConfigProject(self.config)
+        self.active_batch = cfg._config['ActiveBatch']['active_batch']
 
     def _print_active_project(self):
         """
@@ -225,6 +235,15 @@ class Project:
         click.echo('{:<{space_length}} {:<{space_length}}'.format('Config', self.config, space_length=space_length))
         click.echo('{:<{space_length}} {:<{space_length}}'.format('Log', self.log, space_length=space_length))
         click.echo(dashes)
+
+        if not self.active_batch:
+            click.echo(f'No batch is activated.')
+            click.echo(f'Use "camus batch switch <batch_label>" to activate a batch.')
+            click.echo(dashes)
+
+        else:
+            click.echo(f'Active batch: {self.active_batch}')
+            click.echo(dashes)
 
     def switch_active_project(self, label):
         """
@@ -327,7 +346,7 @@ class Project:
 
     def _proj_entry_exists(self):
         """
-        Checks if ``self.label`` entry exists in the ``projects`` table of the Camus database. The self._entry_exists attribute is updated accordingly.
+        Checks if ``self.label`` entry exists in the ``projects`` table of the camus database. The self._entry_exists attribute is updated accordingly.
 
         """
 
@@ -429,6 +448,8 @@ class Project:
         self.load_project(label=label)
         self._get_active_project()
 
+        self._db._get_batches(self.label)
+
         click.echo(self._dashes)
 
         if self._proj_exists:
@@ -436,15 +457,20 @@ class Project:
             click.echo(f'Deleting "{self.label}" project directory...')
             camus_utils.delete_directory(self.dir)
 
+            click.echo(f'Deleting "{self.label}" project batch database entries...')
+
+            for batch in self._db._batch_labels:
+                self._db.clean_db_entry(table_name='batches', row_label=batch, column_name='batch_label')
+
             click.echo(f'Deleting "{self.label}" project database entry...')
-            self._db.clean_db_entry(table_name='projects', row_label=f'{self.label}')
+            self._db.clean_db_entry(table_name='projects', row_label=f'{self.label}', column_name='proj_label')
             click.echo(self._dashes)
 
             self._check_existence()
 
             if not self._proj_exists:
 
-                click.echo(f'Project with label "{self.label}" deleted.')
+                click.echo(f'Project "{self.label}" deleted.')
                 click.echo(self._dashes)
 
                 if self.label == self.active_project:

@@ -3,6 +3,7 @@ import click
 from camus.db.datadir import Datadir
 from camus.db.db import DB
 from camus.db.project import Project
+from camus.db.batch import Batch
 from camus.cfg.config_camus import ConfigCamus
 
 @click.command('all_data', help='Delete the camus data directory.')
@@ -49,6 +50,23 @@ def clean_project(project_label):
     project = Project()
     project.delete_project(label=project_label)
 
+@click.command('batch', help="""Delete the batch with the given batch label.
+
+        Example usage: camus clean batch my_batch_label
+
+        To view the list of all batches in the active project, use:
+
+        camus batch list
+        """)
+@click.argument('batch_label')
+def clean_batch(batch_label):
+    """
+    Deletes the batch with the given ``batch_label``.
+    """
+    
+    batch = Batch()
+    batch.delete_batch(label=batch_label)
+
 @click.group()
 def clean_cli(name='clean', help='Tools for cleaning the camus data directory'):
     """
@@ -60,6 +78,7 @@ clean_cli.add_command(clean_all_data)
 clean_cli.add_command(clean_config)
 clean_cli.add_command(clean_db)
 clean_cli.add_command(clean_project)
+clean_cli.add_command(clean_batch)
 
 def main():
     clean_cli()

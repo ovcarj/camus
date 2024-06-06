@@ -143,6 +143,53 @@ class DB:
 
         click.echo(f'Project entry "{proj_label}" added to the camus database.')
 
+    def create_new_batch(self, proj_label, batch_label, batch_directory, batch_config, batch_log, batch_description=None):
+        """
+        Updates the ``batches`` table with the new batch data.
+
+        Parameters
+        ----------
+        proj_label : str
+            Label of the project that the batch belongs to
+        batch_label : str
+            Label for the new batch
+        batch_directory : str
+            Path to the batch directory
+        batch_config : str
+            Path to the batch configuration file
+        batch_log : str
+            Path to the batch log file
+        batch_description : None
+            Optional batch description
+
+        """
+
+        self._get_projects()
+
+        if proj_label not in self._proj_labels:
+            click.echo(f'Cannot add {batch_label} entry to the camus database: "{proj_label}" project does not exist. Exiting.')
+            sys.exit()
+
+        if not batch_description:
+            batch_description = ''
+
+        data = ({
+            'proj_label': proj_label,
+            'batch_label': batch_label,
+            'batch_directory': batch_directory,
+            'batch_config': batch_config,
+            'batch_log': batch_log,
+            'batch_description': batch_description
+                })
+
+        self._cur.execute("""
+        INSERT INTO batches VALUES(:proj_label, :batch_label, :batch_directory, :batch_config, :batch_log, :batch_description) 
+        """, data)
+
+        self._con.commit()
+
+        click.echo(f'Batch entry "{batch_label}" added to the camus database.')
+
     def _get_projects(self):
         """
         Stores project data to ``self._x``, where x = {proj_labels, proj_directories, proj_configs, proj_logs, proj_descriptions}.
@@ -167,6 +214,42 @@ class DB:
             self._proj_logs.append(project_data[3])
             self._proj_descriptions.append(project_data[4])
 
+    def _get_batches(self, proj_label):
+        """
+        Stores batches data of project ``proj_label`` to ``self._x``, where x = {batch_labels, batch_directories, batch_configs, batch_logs, batch_descriptions}.
+
+        """
+
+        self._get_projects()
+
+        data = ({
+            'proj_label': proj_label,
+            })
+
+        if proj_label in self._proj_labels:
+
+            batches_data = self._cur.execute("""
+            SELECT batch_label, batch_directory, batch_config, batch_log, batch_description FROM batches WHERE proj_label=:proj_label ORDER BY batch_label ASC
+            """, data).fetchall()
+    
+            self._batch_labels = []
+            self._batch_directories = []
+            self._batch_configs = []
+            self._batch_logs = []
+            self._batch_descriptions = []
+    
+            for batch_data in batches_data:
+    
+                self._batch_labels.append(batch_data[0])
+                self._batch_directories.append(batch_data[1])
+                self._batch_configs.append(batch_data[2])
+                self._batch_logs.append(batch_data[3])
+                self._batch_descriptions.append(batch_data[4])
+
+        else:
+            click.echo(f'Cannot fetch {batch_label} entry from the camus database: "{proj_label}" project does not exist.')
+
+
     def clean_database(self):
         """
         Deletes the database found at ``self._db_path``.
@@ -181,20 +264,20 @@ class DB:
         else:
             camus_utils.delete_file(self._db_path)
 
-    def clean_db_entry(self, table_name, row_label):
+    def clean_db_entry(self, table_name, row_label, column_name):
         """
-        Deletes the row that starts with ``row_label`` from the table ``table_name``.
+        Deletes the row that has ``row_label`` value in the ``column_name`` column in the table ``table_name``.
 
         Parameters
         ----------
         table_name : str
             Name of the table from which a row is being deleted
         row_label : str
-            Value of the first entry of the row that is being deleted
+            Value of the entry in ``column_name`` column of the row that is being deleted
+        column_name
+            Name of the column 
         
         """
-
-        column_name = self._cur.execute(f'PRAGMA table_info({table_name})').fetchall()[0][1]
 
         data = ({
             'row_label': row_label,
