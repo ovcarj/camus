@@ -35,9 +35,10 @@ class ConfigCamus(Config):
         
         default_active_project = ''
 
+        default_mpi_command = ''
+        default_mpi_flags = ''
+
         default_lammps_exe = ''
-        default_lammps_run_command = ''
-        default_lammps_flags = ''
 
         default_scheduler = 'Slurm'
 
@@ -45,13 +46,16 @@ class ConfigCamus(Config):
 
         self._config['ActiveProject'] = {'active_project': default_active_project}
 
-        self._config['LAMMPS'] = {
+        self._config['LAMMPS_SETUP'] = {
                 'lammps_exe': default_lammps_exe,
-                'lammps_run_command': default_lammps_run_command,
-                'lammps_flags': default_lammps_flags
                 }
 
-        self._config['Scheduler'] = {'scheduler': default_scheduler}
+        self._config['MPI'] = {
+                'mpi_command': default_mpi_command,
+                'mpi_flags': default_mpi_flags
+                }
+
+        self._config['SCHEDULER'] = {'scheduler': default_scheduler}
 
     def _config_wizard(self):
         """
@@ -66,16 +70,18 @@ class ConfigCamus(Config):
         if len(new_path) > 0:
             self.edit_config_file(update_dict={'camusDataDirectory': {'data_directory': new_path}})
 
+        self._mpi_wizard()
+
         lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a global LAMMPS configuration now? [Y/n]\n')
 
         if lammps_setup == 'Y':
-            self._lammps_wizard()
+            self._lammps_setup_wizard()
             click.echo(self._dashes)
 
         else:
             pass
 
-        click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
+        self._scheduler_wizard()
 
         click.echo(self._dashes)
 

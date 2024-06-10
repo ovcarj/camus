@@ -25,7 +25,6 @@ from camus.tools.parsers import parse_lammps_dump, parse_sisyphus_xyz
 
 scheduler_module = importlib.import_module('camus.scheduler')
 
-
 class Batch():
 
     def __init__(self, structures=None, artn_parameters=None, lammps_parameters=None, sisyphus_parameters=None,

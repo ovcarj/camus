@@ -68,9 +68,9 @@ def clean_batch(batch_label):
     batch.delete_batch(label=batch_label)
 
 @click.group()
-def clean_cli(name='clean', help='Tools for cleaning the camus data directory'):
+def clean_cli(name='clean', help='Tools for cleaning the ``camus`` data directory'):
     """
-    Tools for cleaning the camus data directory
+    Tools for cleaning the ``camus`` data directory
     """
     pass
 

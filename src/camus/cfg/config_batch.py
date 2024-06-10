@@ -4,11 +4,15 @@ import click
 import camus.utils.log as camus_log
 
 from camus.cfg.config import Config
+from camus.cfg.config_project import ConfigProject
+
+from camus.db.project import Project
 
 class ConfigBatch(Config):
     """
     Class which handles creation, deletion, reading and editing of the 
     batch config files.
+
     """
 
     def __init__(self, batch_config_path):
@@ -32,29 +36,30 @@ class ConfigBatch(Config):
 
     def define_default_values(self):
         """
-        Defines the default values for a batch config file.
+        Defines the default values for a batch config file. The majority of the defaults are taken from the active project config file.
 
         """
 
+        default_energy_force_engine = ''
         default_calculation_type = ''
 
-        default_lammps_exe = ''
-        default_lammps_run_command = ''
-        default_lammps_flags = ''
-
-        default_scheduler = ''
+        default_path_to_structures = ''
 
         self._config['CALCULATION'] = {
-                'calc_type_placeholder': default_calculation_type
+                'energy_force_engine': default_energy_force_engine,
+                'calculation_type': default_calculation_type
                 }
 
-        self._config['LAMMPS'] = {
-                'lammps_exe': default_lammps_exe,
-                'lammps_run_command': default_lammps_run_command,
-                'lammps_flags': default_lammps_flags
+        self._config['STRUCTURES'] = {
+                'structures_file': default_path_to_structures
                 }
 
-        self._config['Scheduler'] = {'scheduler': default_scheduler}
+        proj = Project(load_active=True)
+        proj_cfg = ConfigProject(proj.config)
+
+        self._config['LAMMPS_SETUP'] = proj_cfg._config['LAMMPS_SETUP']
+        self._config['MPI'] = proj_cfg._config['MPI']
+        self._config['SCHEDULER'] = proj_cfg._config['SCHEDULER']
 
     def _config_wizard(self):
         """
@@ -68,7 +73,7 @@ class ConfigBatch(Config):
             lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a batch-wide LAMMPS configuration now? [Y/n]\n')
 
             if lammps_setup == 'Y':
-                self._lammps_wizard()
+                self._lammps_setup_wizard()
                 click.echo(self._dashes)
 
             else:
@@ -79,7 +84,7 @@ class ConfigBatch(Config):
             click.echo(self._dashes)
         
         else:
-            click.echo('Using default batch configuration.')
+            click.echo('Using the configuration from the active project.')
 
         click.echo(f'Batch configuration successful!')
         click.echo(f'To edit the active batch config file, see camus batch config --help')

@@ -157,7 +157,7 @@ def config(name='config', help="""Print/edit the config file of the currently ac
 @click.group()
 def project_cli(name='project', help='Create, configure, query projects or switch working projects'):
     """
-    Create, configure and query camus projects
+    Create, configure and query projects
 
     """
     pass

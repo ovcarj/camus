@@ -44,9 +44,9 @@ def edit_config(option, value):
     cfg.edit_config_by_subsection(subsection=option, value=value_str)
 
 @click.group()
-def config_cli(name='config', help='Print and edit the main camus config file'):
+def config_cli(name='config', help='Print/edit the main ``camus`` config file'):
     """
-    CLI for printing and editing the camus config file
+    Print/edit the main ``camus`` config file
 
     """
     pass

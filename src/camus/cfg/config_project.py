@@ -4,11 +4,13 @@ import click
 import camus.utils.log as camus_log
 
 from camus.cfg.config import Config
+from camus.cfg.config_camus import ConfigCamus
 
 class ConfigProject(Config):
     """
     Class which handles creation, deletion, reading and editing of the 
     project config files.
+
     """
 
     def __init__(self, project_config_path):
@@ -32,27 +34,18 @@ class ConfigProject(Config):
 
     def define_default_values(self):
         """
-        Defines the default values for a project config file.
+        Defines the default values for a project config file. The majority of the default values are read from the main camus config file.
 
         """
 
         default_active_batch = ''
 
-        default_lammps_exe = ''
-        default_lammps_run_command = ''
-        default_lammps_flags = ''
-
-        default_scheduler = ''
+        main_config = ConfigCamus()
 
         self._config['ActiveBatch'] = {'active_batch': default_active_batch}
-
-        self._config['LAMMPS'] = {
-                'lammps_exe': default_lammps_exe,
-                'lammps_run_command': default_lammps_run_command,
-                'lammps_flags': default_lammps_flags
-                }
-
-        self._config['Scheduler'] = {'scheduler': default_scheduler}
+        self._config['LAMMPS_SETUP'] = main_config._config['LAMMPS_SETUP']
+        self._config['MPI'] = main_config._config['MPI']
+        self._config['SCHEDULER'] = main_config._config['SCHEDULER']
 
     def _config_wizard(self):
         """
@@ -66,7 +59,7 @@ class ConfigProject(Config):
             lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide LAMMPS configuration now? [Y/n]\n')
 
             if lammps_setup == 'Y':
-                self._lammps_wizard()
+                self._lammps_setup_wizard()
                 click.echo(self._dashes)
 
             else:
@@ -77,7 +70,7 @@ class ConfigProject(Config):
             click.echo(self._dashes)
         
         else:
-            click.echo('Using default project configuration.')
+            click.echo('Using the configuration from the main config file.')
 
         click.echo(f'Project configuration successful!')
         click.echo(f'To edit the active project config file, see camus project config --help')

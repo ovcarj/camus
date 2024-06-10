@@ -203,6 +203,7 @@ class Batch:
                     copyfile(src=config_file, dst=self.config)
 
                 else:
+
                     cfg = ConfigBatch(self.config)
                     cfg.create_config_file()
 

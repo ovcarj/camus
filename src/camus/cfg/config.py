@@ -12,6 +12,7 @@ import camus.utils.log as camus_log
 class Config(abc.ABC):
     """
     Base class which handles creation, deletion, reading and editing of configuration files.
+
     """
 
     def __init__(self, config_dir, config_name, help_message=''):
@@ -21,7 +22,7 @@ class Config(abc.ABC):
         Parameters
         ----------
         config_dir : str
-            Directory in which the config files is or will be created
+            Directory in which the config file is or will be created
         config_name : str
             Name of the config file
         help_message : str
@@ -49,6 +50,7 @@ class Config(abc.ABC):
         """
         Checks the existence of the ``self.config`` directory; 
         the ``self._config_exists`` attribute is updated accordingly.
+
         """
 
         self._config_exists = camus_utils.file_exists(self._config_path)
@@ -61,6 +63,7 @@ class Config(abc.ABC):
         The values should be defined in the following way:
 
         self._config['SECTION'] = {'option0': value0, option1: value1, ...}
+
         """
 
         pass
@@ -69,6 +72,7 @@ class Config(abc.ABC):
         """
         Creates the config file with default values. If ``self._config_path`` already exists, 
         the user is prompted if they want to proceed with the current config file.
+
         """
 
         self.check_existence()
@@ -151,6 +155,7 @@ class Config(abc.ABC):
     def print_config(self):
         """
         Prints the contents of the config file.
+
         """
 
         self.check_existence()
@@ -159,7 +164,7 @@ class Config(abc.ABC):
 
             with open(self._config_path, 'r') as f:
 
-                click.echo(f'Contents of the config file at {self._config_path}:')
+                click.echo(f'Contents of the config file at\n{self._config_path}')
                 click.echo(self._dashes)
                 click.echo(f.read(), nl=False)
 
@@ -246,36 +251,54 @@ class Config(abc.ABC):
         """
         A procedure to guide the user through editing the config file after it was initialized.
         """
-
         pass
 
-    def _lammps_wizard(self):
+    def _lammps_setup_wizard(self):
         """
         A procedure to guide the user through LAMMPS setup.
+
         """
 
         new_lammps_exe = input(f'Enter the path to the LAMMPS executable or press "Enter" if you wish to provide the path later.\n')
 
         if len(new_lammps_exe) > 0:
-            self.edit_config_file(update_dict={'LAMMPS': {'lammps_exe': new_lammps_exe}})
+            self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_exe': new_lammps_exe}})
+
+#        new_lammps_modules = input(f'Enter a comma-separated list of modules ')
 
         click.echo('\n')
 
-        new_lammps_run_command = input(f'Provide a command which will be used as a default to run the LAMMPS executable (e.g. mpirun -np 4) or press "Enter" to skip this step.\n')
+    def _scheduler_wizard(self):
+        """
+        A procedure to guide the user through the scheduler setup.
 
-        if len(new_lammps_run_command) > 0:
-            self.edit_config_file(update_dict={'LAMMPS': {'lammps_run_command': new_lammps_run_command}})
+        """
 
-        click.echo('\n')
+        click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
 
-        new_lammps_flags = input(f'Provide flags you wish to use to run LAMMPS (e.g. -sf omp -pk omp 1) or press "Enter" to not append any flags.\n')
+    def _mpi_wizard(self):
+        """
+        A procedure to guide the user through the MPI setup.
 
-        if len(new_lammps_flags) > 0:
-            self.edit_config_file(update_dict={'LAMMPS': {'lammps_flags': new_lammps_flags}})
+        """
+
+        new_mpi_command = input(f'Enter default command for running MPI programs (e.g. mpirun) or press "Enter" to skip this step.\n')
+
+        if len(new_mpi_command) > 0:
+            self.edit_config_file(update_dict={'MPI': {'mpi_command': new_mpi_command}})
+
+        new_mpi_flags = input(f'Provide default flags you wish to append when running an MPI application (e.g. -sf omp -pk omp 1) or press "Enter" not to append any flags.\n')
+
+        if len(new_mpi_flags) > 0:
+            self.edit_config_file(update_dict={'MPI': {'mpi_flags': new_mpi_flags}})
+            click.echo('\n')
 
     def clean_config(self):
         """
         Deletes the file at ``self._config_path``.
+
         """
 
         camus_utils.delete_file(self._config_path)
+
+
