@@ -39,8 +39,16 @@ class ConfigCamus(Config):
         default_mpi_flags = ''
 
         default_lammps_exe = ''
+        default_lammps_modules = ''
+        default_lammps_path_prepend = ''
+        default_lammps_ld_path_prepend = ''
 
         default_scheduler = 'Slurm'
+        default_partition = ''
+        default_memory = ''
+        default_nodes = ''
+        default_walltime = ''
+        default_scheduler_commands = ''
 
         self._config['camusDataDirectory'] = {'data_directory': default_base}
 
@@ -48,6 +56,9 @@ class ConfigCamus(Config):
 
         self._config['LAMMPS_SETUP'] = {
                 'lammps_exe': default_lammps_exe,
+                'lammps_modules': default_lammps_modules,
+                'lammps_path_prepend': default_lammps_path_prepend,
+                'lammps_ld_path_prepend': default_lammps_ld_path_prepend
                 }
 
         self._config['MPI'] = {
@@ -55,7 +66,14 @@ class ConfigCamus(Config):
                 'mpi_flags': default_mpi_flags
                 }
 
-        self._config['SCHEDULER'] = {'scheduler': default_scheduler}
+        self._config['SCHEDULER'] = {
+                'scheduler': default_scheduler,
+                'partition': default_partition,
+                'memory': default_memory,
+                'nodes': default_nodes,
+                'walltime': default_walltime,
+                'additional_scheduler_commands': default_scheduler_commands
+                }
 
     def _config_wizard(self):
         """
@@ -70,8 +88,6 @@ class ConfigCamus(Config):
         if len(new_path) > 0:
             self.edit_config_file(update_dict={'camusDataDirectory': {'data_directory': new_path}})
 
-        self._mpi_wizard()
-
         lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a global LAMMPS configuration now? [Y/n]\n')
 
         if lammps_setup == 'Y':
@@ -81,14 +97,16 @@ class ConfigCamus(Config):
         else:
             pass
 
-        self._scheduler_wizard()
-
+        self._mpi_wizard()
         click.echo(self._dashes)
 
-        click.echo(f"""See `camus project --help` to create a new project or switch to an existing one.""")
-
+        self._scheduler_wizard()
         click.echo(self._dashes)
 
         click.echo(f'camus configuration successful!')
         click.echo(f'To edit the config file, see camus config edit --help')
         click.echo(self._dashes)
+
+        click.echo(f'See `camus project --help` to create a new project or switch to an existing one.')
+        click.echo(self._dashes)
+

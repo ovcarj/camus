@@ -9,6 +9,8 @@ import configparser
 import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
+from camus.utils.environment import Environment
+
 class Config(abc.ABC):
     """
     Base class which handles creation, deletion, reading and editing of configuration files.
@@ -45,6 +47,8 @@ class Config(abc.ABC):
             self.read_config()
 
         self._help_message = help_message
+
+        self._env = Environment()
 
     def check_existence(self):
         """
@@ -259,14 +263,41 @@ class Config(abc.ABC):
 
         """
 
+        click.echo('Starting LAMMPS setup...')
+        click.echo(self._dashes)
+
         new_lammps_exe = input(f'Enter the path to the LAMMPS executable or press "Enter" if you wish to provide the path later.\n')
 
         if len(new_lammps_exe) > 0:
             self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_exe': new_lammps_exe}})
+            click.echo('\n')
 
-#        new_lammps_modules = input(f'Enter a comma-separated list of modules ')
+        if self._env._has_modules:
 
-        click.echo('\n')
+            new_lammps_modules = input(f'Enter a comma-separated list of modules you wish to load when running LAMMPS or press "Enter" to skip this step.\n')
+
+            if len(new_lammps_modules) > 0:
+                self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_modules': new_lammps_modules}})
+                click.echo('\n')
+        else:
+            click.echo('No ``module`` program was found on the OS. No additional modules will be loaded while running LAMMPS.\n')
+
+        new_lammps_path_prepend = input(f'Enter a colon-separated list of paths which will be prepended to the PATH environment variable when running LAMMPS or press "Enter" to skip this step.\n')
+
+        if len(new_lammps_path_prepend) > 0:
+            self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_path_prepend': new_lammps_path_prepend}})
+            click.echo('\n')
+
+        if self._env._is_unix:
+
+            new_lammps_ld_path_prepend = input(f'Enter a colon-separated list of paths which will be prepended to the LD_LIBRARY_PATH environment variable when running LAMMPS or press "Enter" to skip this step.\n')
+
+            if len(new_lammps_ld_path_prepend) > 0:
+                self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_ld_path_prepend': new_lammps_ld_path_prepend}})
+                click.echo('\n')
+
+        click.echo(self._dashes)
+        click.echo('LAMMPS setup finished!')
 
     def _scheduler_wizard(self):
         """
@@ -274,7 +305,43 @@ class Config(abc.ABC):
 
         """
 
-        click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
+        click.echo('Starting scheduler setup...')
+        click.echo(self._dashes)
+
+        click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.\n')
+
+        new_partition = input(f'Enter the name of the default cluster partition to be used or press "Enter" to skip this step.\n')
+
+        if len(new_partition) > 0:
+            self.edit_config_file(update_dict={'SCHEDULER': {'partition': new_partition}})
+            click.echo('\n')
+
+        new_memory = input(f'Enter the default amount of memory a job will request in the format that the scheduler can read or press "Enter" to skip this step.\n')
+
+        if len(new_memory) > 0:
+            self.edit_config_file(update_dict={'SCHEDULER': {'memory': new_memory}})
+            click.echo('\n')
+
+        new_nodes = input(f'Enter the default number of nodes a job will request in the format that the scheduler can read or press "Enter" to skip this step.\n')
+
+        if len(new_nodes) > 0:
+            self.edit_config_file(update_dict={'SCHEDULER': {'nodes': new_nodes}})
+            click.echo('\n')
+
+        new_walltime = input(f'Enter the value of the default job walltime in the format that the scheduler can read or press "Enter" to skip this step.\n')
+
+        if len(new_walltime) > 0:
+            self.edit_config_file(update_dict={'SCHEDULER': {'walltime': new_walltime}})
+            click.echo('\n')
+
+        new_additional_commands = input(f'Enter a comma-separated list of commands to be written into a submission script (e.g., export MKL_CBWR="AVX2", export I_MPI_FABRICS=shm:ofi) or press "Enter" to skip this step.\n')
+
+        if len(new_additional_commands) > 0:
+            self.edit_config_file(update_dict={'SCHEDULER': {'additional_scheduler_commands': new_additional_commands}})
+            click.echo('\n')
+
+        click.echo(self._dashes)
+        click.echo('Scheduler setup finished!')
 
     def _mpi_wizard(self):
         """
@@ -282,16 +349,23 @@ class Config(abc.ABC):
 
         """
 
+        click.echo('Starting MPI setup...')
+        click.echo(self._dashes)
+
         new_mpi_command = input(f'Enter default command for running MPI programs (e.g. mpirun) or press "Enter" to skip this step.\n')
 
         if len(new_mpi_command) > 0:
             self.edit_config_file(update_dict={'MPI': {'mpi_command': new_mpi_command}})
+            click.echo('\n')
 
         new_mpi_flags = input(f'Provide default flags you wish to append when running an MPI application (e.g. -sf omp -pk omp 1) or press "Enter" not to append any flags.\n')
 
         if len(new_mpi_flags) > 0:
             self.edit_config_file(update_dict={'MPI': {'mpi_flags': new_mpi_flags}})
             click.echo('\n')
+
+        click.echo(self._dashes)
+        click.echo('MPI setup finished!')
 
     def clean_config(self):
         """
@@ -300,5 +374,3 @@ class Config(abc.ABC):
         """
 
         camus_utils.delete_file(self._config_path)
-
-

@@ -56,7 +56,11 @@ class ConfigProject(Config):
 
         if project_setup == 'Y':
 
-            lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide LAMMPS configuration now? [Y/n]\n')
+            click.echo('Starting project configuration...')
+            click.echo('Note: the values for the steps you skip will be taken from the main camus configuration file.')
+            click.echo(self._dashes)
+
+            lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide LAMMPS configuration now? Type "n" to use values from the main camus configuration file. [Y/n]\n')
 
             if lammps_setup == 'Y':
                 self._lammps_setup_wizard()
@@ -65,10 +69,24 @@ class ConfigProject(Config):
             else:
                 pass
 
-            click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
+            mpi_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide MPI configuration now? Type "n" to use values from the main camus configuration file. [Y/n]\n')
 
-            click.echo(self._dashes)
-        
+            if mpi_setup == 'Y':
+                self._mpi_wizard()
+                click.echo(self._dashes)
+
+            else:
+                pass
+
+            scheduler_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide scheduler configuration now? Type "n" to use values from the main camus configuration file. [Y/n]\n')
+
+            if scheduler_setup == 'Y':
+                self._scheduler_wizard()
+                click.echo(self._dashes)
+
+            else:
+                pass
+
         else:
             click.echo('Using the configuration from the main config file.')
 

@@ -47,10 +47,7 @@ class ConfigBatch(Config):
 
         self._config['CALCULATION'] = {
                 'energy_force_engine': default_energy_force_engine,
-                'calculation_type': default_calculation_type
-                }
-
-        self._config['STRUCTURES'] = {
+                'calculation_type': default_calculation_type,
                 'structures_file': default_path_to_structures
                 }
 
@@ -70,6 +67,10 @@ class ConfigBatch(Config):
 
         if batch_setup == 'Y':
 
+            click.echo('Starting batch configuration...')
+            click.echo('Note: the values for the steps you skip will be taken from the active project\'s configuration file.')
+            click.echo(self._dashes)
+
             lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a batch-wide LAMMPS configuration now? [Y/n]\n')
 
             if lammps_setup == 'Y':
@@ -79,10 +80,21 @@ class ConfigBatch(Config):
             else:
                 pass
 
-            click.echo(f'This is a placeholder message to warn that currently, only the Slurm scheduler is implemented.')
+            mpi_setup = camus_log.ask_yes_no(f'Do you wish to create a batch-wide MPI configuration now? Type "n" to use values from the active project\'s configuration file. [Y/n]\n')
 
-            click.echo(self._dashes)
-        
+            if mpi_setup == 'Y':
+                self._mpi_wizard()
+                click.echo(self._dashes)
+
+            else:
+                pass
+
+            scheduler_setup = camus_log.ask_yes_no(f'Do you wish to create a batch-wide scheduler configuration now? Type "n" to use values from the active project\'s configuration file. [Y/n]\n')
+
+            if scheduler_setup == 'Y':
+                self._scheduler_wizard()
+                click.echo(self._dashes)
+
         else:
             click.echo('Using the configuration from the active project.')
 
