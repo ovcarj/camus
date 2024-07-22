@@ -77,7 +77,8 @@ class ConfigCamus(Config):
 
     def _config_wizard(self):
         """
-        Procedure to guide the user after the initialization of the default config file.
+        Procedure to guide the user after the initialization of the main ``camus`` config file.
+
         """
 
         click.echo(f'camus will store all data in a given base directory.')
@@ -86,7 +87,7 @@ class ConfigCamus(Config):
         new_path = input(f'Press "Enter" to keep the default or provide another path:\n')
 
         if len(new_path) > 0:
-            self.edit_config_file(update_dict={'camusDataDirectory': {'data_directory': new_path}})
+            self._config['camusDataDirectory']['data_directory'] = new_path
 
         lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a global LAMMPS configuration now? [Y/n]\n')
 
@@ -109,4 +110,3 @@ class ConfigCamus(Config):
 
         click.echo(f'See `camus project --help` to create a new project or switch to an existing one.')
         click.echo(self._dashes)
-

@@ -12,7 +12,7 @@ from camus.cfg.config_project import ConfigProject
 
 from shutil import copyfile
 
-class Project:
+class ProjectManager:
     """
     Class which handles creation, deletion, configuring, logging and querying projects.
     """
@@ -78,9 +78,7 @@ class Project:
                 self.log = self._db._proj_logs[proj_index]
                 self.description = self._db._proj_descriptions[proj_index]
 
-                self._get_active_batch()
-
-                self._get_logger()
+                self._get_active_workflow()
 
             else:
                 click.echo(self._dashes)
@@ -165,8 +163,6 @@ class Project:
 
                 click.echo(self._dashes)
 
-                self._get_logger()
-
                 self._write_2_log(camus_log.camus_start(start_message=f'Project {self.label} created on'))
 
                 space_length = 15
@@ -202,14 +198,15 @@ class Project:
         """
 
         self.active_project = self._camus_cfg._config['ActiveProject']['active_project']
-    def _get_active_batch(self):
+
+    def _get_active_workflow(self):
         """
-        Read the project config file to get the active batch.
+        Read the project config file to get the active workflow.
 
         """
 
         cfg = ConfigProject(self.config)
-        self.active_batch = cfg._config['ActiveBatch']['active_batch']
+        self.active_workflow = cfg._config['ActiveWorkflow']['active_workflow']
 
     def _print_active_project(self):
         """
@@ -236,13 +233,13 @@ class Project:
         click.echo('{:<{space_length}} {:<{space_length}}'.format('Log', self.log, space_length=space_length))
         click.echo(dashes)
 
-        if not self.active_batch:
-            click.echo(f'No batch is activated.')
-            click.echo(f'Use "camus batch switch <batch_label>" to activate a batch.')
+        if not self.active_workflow:
+            click.echo(f'No workflow is activated.')
+            click.echo(f'Use "camus wf switch <workflow_label>" to activate a workflow.')
             click.echo(dashes)
 
         else:
-            click.echo(f'Active batch: {self.active_batch}')
+            click.echo(f'Active workflow: {self.active_workflow}')
             click.echo(dashes)
 
     def switch_active_project(self, label):
@@ -396,6 +393,9 @@ class Project:
 
         """
 
+        if not hasattr(self, '_logger'):
+            self._get_logger()
+
         self._logger.info(logtext)
 
     def _print_log(self):
@@ -448,7 +448,7 @@ class Project:
         self.load_project(label=label)
         self._get_active_project()
 
-        self._db._get_batches(self.label)
+        self._db._get_workflows(self.label)
 
         click.echo(self._dashes)
 
@@ -457,10 +457,10 @@ class Project:
             click.echo(f'Deleting "{self.label}" project directory...')
             camus_utils.delete_directory(self.dir)
 
-            click.echo(f'Deleting "{self.label}" project batch database entries...')
+            click.echo(f'Deleting "{self.label}" project workflow database entries...')
 
-            for batch in self._db._batch_labels:
-                self._db.clean_db_entry(table_name='batches', row_label=batch, column_name='batch_label')
+            for workflow in self._db._workflow_labels:
+                self._db.clean_db_entry(table_name='workflows', row_label=workflow, column_name='workflow_label')
 
             click.echo(f'Deleting "{self.label}" project database entry...')
             self._db.clean_db_entry(table_name='projects', row_label=f'{self.label}', column_name='proj_label')

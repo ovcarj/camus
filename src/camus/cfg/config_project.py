@@ -38,21 +38,21 @@ class ConfigProject(Config):
 
         """
 
-        default_active_batch = ''
+        default_active_workflow = ''
 
         main_config = ConfigCamus()
 
-        self._config['ActiveBatch'] = {'active_batch': default_active_batch}
+        self._config['ActiveWorkflow'] = {'active_workflow': default_active_workflow}
         self._config['LAMMPS_SETUP'] = main_config._config['LAMMPS_SETUP']
         self._config['MPI'] = main_config._config['MPI']
         self._config['SCHEDULER'] = main_config._config['SCHEDULER']
 
     def _config_wizard(self):
         """
-        Procedure to guide the user after the initialization of the default config file.
+        Procedure to guide the user after the initialization of the project config file.
         """
 
-        project_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide configuration now? [Y/n]\n')
+        project_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide environment configuration now? Type "n" to use the configuration from the main camus configuration file. [Y/n]\n')
 
         if project_setup == 'Y':
 
@@ -60,7 +60,7 @@ class ConfigProject(Config):
             click.echo('Note: the values for the steps you skip will be taken from the main camus configuration file.')
             click.echo(self._dashes)
 
-            lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide LAMMPS configuration now? Type "n" to use values from the main camus configuration file. [Y/n]\n')
+            lammps_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide LAMMPS configuration now? Type "n" to use the configuration from the main camus configuration file. [Y/n]\n')
 
             if lammps_setup == 'Y':
                 self._lammps_setup_wizard()
@@ -69,7 +69,7 @@ class ConfigProject(Config):
             else:
                 pass
 
-            mpi_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide MPI configuration now? Type "n" to use values from the main camus configuration file. [Y/n]\n')
+            mpi_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide MPI configuration now? Type "n" to use the configuration from the main camus configuration file. [Y/n]\n')
 
             if mpi_setup == 'Y':
                 self._mpi_wizard()
@@ -78,7 +78,7 @@ class ConfigProject(Config):
             else:
                 pass
 
-            scheduler_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide scheduler configuration now? Type "n" to use values from the main camus configuration file. [Y/n]\n')
+            scheduler_setup = camus_log.ask_yes_no(f'Do you wish to create a project-wide scheduler configuration now? Type "n" to use the configuration from the main camus configuration file. [Y/n]\n')
 
             if scheduler_setup == 'Y':
                 self._scheduler_wizard()

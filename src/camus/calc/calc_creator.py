@@ -25,19 +25,12 @@ class CalcCreator(abc.ABC):
 
         """
         
-        self._define_required_cfg()
+        self._define_required_engine_cfg()
+        self._define_required_calc_cfg()
+        self._define_env_cfg()
 
         if calc_config_path:
             self._cfg = ConfigCalc(calc_config_path)
-
-#        self._check_required_cfg()
-
-#        self.dir = self._cfg._config['CALCULATION']['calc_directory']
-#        self.label = self._cfg._config['CALCULATION']['calc_label']
-
-#        self.log = f'{self.dir}/{self.label}.log'
-
-#        self._schedule = True
 
     @abc.abstractmethod
     def write_inputs(self):
@@ -55,14 +48,13 @@ class CalcCreator(abc.ABC):
         """
         pass
 
-    @abc.abstractmethod
     def create_calculation(self):
         """
-        Writes all input files and a submission script if ``self._schedule == True``.
+        Writes all input files and a submission script if ``self._scheduler == True``.
 
         """
 
-        if self._schedule:
+        if self._scheduler:
             self.write_submission_script()
 
         self.write_inputs()
@@ -71,13 +63,30 @@ class CalcCreator(abc.ABC):
         self._write_2_log(camus_log.timestamp_message(f'Calculation {self.label} created on'))
 
     @abc.abstractmethod
-    def _define_required_cfg(self):
+    def _define_required_engine_cfg(self):
         """
-        Defines a dictionary of the config options that must be provided for the calculation to be created.
+        Defines a dictionary of the engine-related config options that must be provided for the calculation to be created.
 
         """
         pass
 
+    @abc.abstractmethod
+    def _define_required_calc_cfg(self):
+        """
+        Defines a dictionary of the calculation-related config options that must be provided for the calculation to be created.
+
+        """
+        pass
+
+    @abc.abstractmethod
+    def _define_env_cfg(self):
+        """
+        Defines a dictionary of the environment-related config options that can optionally be provided.
+
+        """
+        pass
+
+    @abc.abstractmethod
     def _check_required_cfg(self):
         """
         Checks if the required config is provided.

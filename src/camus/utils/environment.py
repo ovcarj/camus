@@ -207,7 +207,7 @@ class Environment:
         else:
 
             if self._is_unix:
-                click.echo('$LD_LIBRARY_PATH is not set')
+                click.echo('LD_LIBRARY_PATH is not set')
 
             else:
                 pass
@@ -221,9 +221,7 @@ class Environment:
                 click.echo('Currently loaded modules:\n')
 
                 for i, loaded_module in enumerate(self.loaded_modules):
-
                     click.echo(f'{i}) {loaded_module}')
 
             else:
-
                 click.echo('No modules are loaded')

@@ -10,6 +10,7 @@ import camus.utils.utils as camus_utils
 import camus.utils.log as camus_log
 
 from camus.utils.environment import Environment
+from camus.calc.calc_map import CalcMap
 
 class Config(abc.ABC):
     """
@@ -29,6 +30,7 @@ class Config(abc.ABC):
             Name of the config file
         help_message : str
             Message that describes how to edit/delete the config file using the CLI 
+
         """
 
         self._dashes = camus_log.get_log_dashes()
@@ -91,6 +93,8 @@ class Config(abc.ABC):
 
             self.define_default_values()
 
+            self._config_wizard()
+
             if not camus_utils.directory_exists(self._config_dir):
                 os.makedirs(self._config_dir)
 
@@ -106,17 +110,12 @@ class Config(abc.ABC):
 
             if self._config_exists:
 
-                click.echo(f'Path to the configuration file: {self._config_path}')
-                click.echo(self._dashes)
+                self.print_config()
                 self.read_config()
 
             else:
                 click.echo('Failed to initialize the config file at {self._config_path}. Exiting.')
                 sys.exit()
-
-            self._config_wizard()
-
-            self.print_config()
             
     def _handle_config_exists(self):
         """
@@ -137,7 +136,7 @@ class Config(abc.ABC):
 
         elif proceed == 'n':
 
-            click.echo(f'Stopping, as requested.')
+            click.echo(f'Stopping.')
             click.echo(self._help_message)
             click.echo(self._dashes)
 
@@ -146,6 +145,7 @@ class Config(abc.ABC):
     def read_config(self):
         """
         Reads the contents of the config file and stores the values to ``self._config``.
+
         """
 
         self.check_existence()
@@ -177,7 +177,7 @@ class Config(abc.ABC):
         else:
             click.echo('The config file does not exist.')
 
-    def edit_config_file(self, update_dict):
+    def edit_config_file(self, update_dict, add_section=False, add_subsection=False, verbose=True):
         """
         Edit the contents of the config file.
 
@@ -188,6 +188,12 @@ class Config(abc.ABC):
         ----------
         update_dict : dict
             Dictionary of form {section0: {subsection00: value00, subsection01: value01}, section1: {subsection10: value10, subsection12: value12}, ...}
+        add_section : bool
+            If True, will add a previously nonexisting section to the config file. Else, exit
+        add_subsection : bool
+            If True, will add a previously nonexisting subsection to the config file. Else, exit
+        verbose : bool
+            If True, print a message upon editing the config file
 
         """
 
@@ -198,27 +204,37 @@ class Config(abc.ABC):
         for section, subsections_values in update_dict.items():
 
             if section not in all_sections:
-                click.echo(f'Invalid configuration section {section}')
 
-            else:
+                if add_section:
+                    self._config[section] = {}
 
-                all_subsections = self._config[section].keys()
+                else:
+                    click.echo(f'Invalid configuration section {section}')
+                    sys.exit()
 
-                for subsection, value in subsections_values.items():
+            all_subsections = self._config[section].keys()
 
-                    if subsection not in all_subsections:
-                        click.echo(f'Invalid configuration option {subsection}')
+            for subsection, value in subsections_values.items():
+
+                if subsection not in all_subsections:
+
+                    if add_subsection:
+                        self._config[section][subsection] = ''
 
                     else:
+                        click.echo(f'Invalid configuration option {subsection}')
+                        sys.exit()
 
-                        self._config[section][subsection] = value
-                        
-                        with open(self._config_path, 'w') as configfile:
-                            self._config.write(configfile)
+                self._config[section][subsection] = value
+                
+                with open(self._config_path, 'w') as configfile:
+                    self._config.write(configfile)
 
-                        click.echo(f'Edited {self._config_path}\n')
-                        click.echo(f'[{section}]: {subsection} updated to {value}')
-                        self.read_config()
+                if verbose:
+                    click.echo(f'Edited {self._config_path}\n')
+                    click.echo(f'[{section}]: {subsection} updated to {value}')
+
+                self.read_config()
 
     def edit_config_by_subsection(self, subsection, value):
         """
@@ -269,7 +285,7 @@ class Config(abc.ABC):
         new_lammps_exe = input(f'Enter the path to the LAMMPS executable or press "Enter" if you wish to provide the path later.\n')
 
         if len(new_lammps_exe) > 0:
-            self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_exe': new_lammps_exe}})
+            self._config['LAMMPS_SETUP']['lammps_exe'] = new_lammps_exe
             click.echo('\n')
 
         if self._env._has_modules:
@@ -277,7 +293,7 @@ class Config(abc.ABC):
             new_lammps_modules = input(f'Enter a comma-separated list of modules you wish to load when running LAMMPS or press "Enter" to skip this step.\n')
 
             if len(new_lammps_modules) > 0:
-                self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_modules': new_lammps_modules}})
+                self._config['LAMMPS_SETUP']['lammps_modules'] = new_lammps_modules
                 click.echo('\n')
         else:
             click.echo('No ``module`` program was found on the OS. No additional modules will be loaded while running LAMMPS.\n')
@@ -285,7 +301,7 @@ class Config(abc.ABC):
         new_lammps_path_prepend = input(f'Enter a colon-separated list of paths which will be prepended to the PATH environment variable when running LAMMPS or press "Enter" to skip this step.\n')
 
         if len(new_lammps_path_prepend) > 0:
-            self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_path_prepend': new_lammps_path_prepend}})
+            self._config['LAMMPS_SETUP']['lammps_path_prepend'] = new_lammps_path_prepend
             click.echo('\n')
 
         if self._env._is_unix:
@@ -293,7 +309,7 @@ class Config(abc.ABC):
             new_lammps_ld_path_prepend = input(f'Enter a colon-separated list of paths which will be prepended to the LD_LIBRARY_PATH environment variable when running LAMMPS or press "Enter" to skip this step.\n')
 
             if len(new_lammps_ld_path_prepend) > 0:
-                self.edit_config_file(update_dict={'LAMMPS_SETUP': {'lammps_ld_path_prepend': new_lammps_ld_path_prepend}})
+                self._config['LAMMPS_SETUP']['lammps_ld_path_prepend'] = new_lammps_ld_path_prepend
                 click.echo('\n')
 
         click.echo(self._dashes)
@@ -313,31 +329,31 @@ class Config(abc.ABC):
         new_partition = input(f'Enter the name of the default cluster partition to be used or press "Enter" to skip this step.\n')
 
         if len(new_partition) > 0:
-            self.edit_config_file(update_dict={'SCHEDULER': {'partition': new_partition}})
+            self._config['SCHEDULER']['partition'] = new_partition
             click.echo('\n')
 
         new_memory = input(f'Enter the default amount of memory a job will request in the format that the scheduler can read or press "Enter" to skip this step.\n')
 
         if len(new_memory) > 0:
-            self.edit_config_file(update_dict={'SCHEDULER': {'memory': new_memory}})
+            self._config['SCHEDULER']['memory'] = new_memory
             click.echo('\n')
 
         new_nodes = input(f'Enter the default number of nodes a job will request in the format that the scheduler can read or press "Enter" to skip this step.\n')
 
         if len(new_nodes) > 0:
-            self.edit_config_file(update_dict={'SCHEDULER': {'nodes': new_nodes}})
+            self._config['SCHEDULER']['nodes'] = new_nodes
             click.echo('\n')
 
         new_walltime = input(f'Enter the value of the default job walltime in the format that the scheduler can read or press "Enter" to skip this step.\n')
 
         if len(new_walltime) > 0:
-            self.edit_config_file(update_dict={'SCHEDULER': {'walltime': new_walltime}})
+            self._config['SCHEDULER']['walltime'] = new_walltime
             click.echo('\n')
 
         new_additional_commands = input(f'Enter a comma-separated list of commands to be written into a submission script (e.g., export MKL_CBWR="AVX2", export I_MPI_FABRICS=shm:ofi) or press "Enter" to skip this step.\n')
 
         if len(new_additional_commands) > 0:
-            self.edit_config_file(update_dict={'SCHEDULER': {'additional_scheduler_commands': new_additional_commands}})
+            self._config['SCHEDULER']['additional_scheduler_commands'] = new_additional_commands
             click.echo('\n')
 
         click.echo(self._dashes)
@@ -355,17 +371,89 @@ class Config(abc.ABC):
         new_mpi_command = input(f'Enter default command for running MPI programs (e.g. mpirun) or press "Enter" to skip this step.\n')
 
         if len(new_mpi_command) > 0:
-            self.edit_config_file(update_dict={'MPI': {'mpi_command': new_mpi_command}})
+            self._config['MPI']['mpi_command'] = new_mpi_command
             click.echo('\n')
 
         new_mpi_flags = input(f'Provide default flags you wish to append when running an MPI application (e.g. -sf omp -pk omp 1) or press "Enter" not to append any flags.\n')
 
         if len(new_mpi_flags) > 0:
-            self.edit_config_file(update_dict={'MPI': {'mpi_flags': new_mpi_flags}})
+            self._config['MPI']['mpi_flags'] = new_mpi_flags
             click.echo('\n')
 
         click.echo(self._dashes)
         click.echo('MPI setup finished!')
+
+    def _calculation_type_wizard(self):
+        """
+        A procedure to guide the user through setting up the calculation type.
+
+        Sets ``self._calc_type``, ``self._calc_method``, ``self._calc_engine``.
+
+        """
+
+        calc_map = CalcMap()
+        calc_types = calc_map._all_calc_types
+
+        click.echo('Starting calculation setup...')
+        click.echo(self._dashes)
+
+        click.echo('What type of calculation(s) do you want to run?')
+
+        calc_map._pretty_print_dict(calc_types)
+        click.echo(self._dashes)
+
+        calc_type_int = camus_log.ask_4_integer(calc_types)
+        calc_type = calc_types[calc_type_int]
+
+        calc_methods = calc_map._get_methods_dict(calc_type)
+
+        if not all(method == 'no_method' for method in calc_methods.values()):
+
+            if len(calc_methods.keys()) == 1:
+
+                calc_method = calc_methods[list(calc_methods.keys())[0]]
+                click.echo(f'Using calculation engine: {calc_engine}')
+
+            else:
+
+                click.echo('What method do you want to use?')
+
+                calc_map._pretty_print_dict(calc_methods)
+                click.echo(self._dashes)
+
+                calc_method_int = camus_log.ask_4_integer(calc_methods)
+                calc_method = calc_methods[calc_method_int]
+
+        else:
+            calc_method = 'no_method'
+
+        calc_engines = calc_map._get_engines_dict(calc_type, calc_method)
+
+        if not all(engine == 'no_engine' for engine in calc_engines.values()):
+           
+            if len(calc_engines.keys()) == 1:
+
+                calc_engine = calc_engines[list(calc_engines.keys())[0]]
+                click.echo(f'Using calculation engine: {calc_engine}')
+            
+            else:
+    
+                click.echo('What engine do you want to use?')
+    
+                calc_map._pretty_print_dict(calc_engines)
+                click.echo(self._dashes)
+    
+                calc_engine_int = camus_log.ask_4_integer(calc_engines)
+                calc_engine = calc_engines[calc_engine_int]
+
+        else:
+            calc_engine = 'no_engine'
+
+        self._calc_class = calc_map._get_calc_class(calc_type, calc_method, calc_engine)
+
+        self._calc_type = calc_type
+        self._calc_method = calc_method
+        self._calc_engine = calc_engine
 
     def clean_config(self):
         """

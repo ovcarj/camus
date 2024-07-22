@@ -2,7 +2,7 @@ import click
 
 from camus.cfg.config_camus import ConfigCamus
 
-@click.command('show', help='Print the main camus config file.')
+@click.command('print', help='Print the main camus config file.')
 def show_config():
     """
     Prints the ``camus`` config file.
@@ -21,13 +21,13 @@ def show_config():
         The new value should be given after the option.
 
         NOTE: if you want to pass a string which includes a hyphen as a new value,
-        you should prepend the value with "--", e.g.:
+        you should prepend the string with "--", e.g.:
 
         camus config edit lammps_run_command -- mpirun -np 2
 
         To see the current config file, use:
 
-        camus config show
+        camus config print
 
         """)
 @click.argument('option')

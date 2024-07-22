@@ -89,19 +89,19 @@ class Datadir:
 
     def _create_dir(self, dir_path, dir_type):
         """
-        Creates a directory ``dir_path``. Used to create ``dir_type = {'Project', 'Batch'}`` directories. #TODO probably also Calculation...
+        Creates a directory ``dir_path``. Used to create ``dir_type = {'Project', 'Workflow'}`` directories. #TODO probably also Calculation...
 
         Parameters
         ----------
         dir_path : str
             Path to the directory to be created
         dir_type : str
-            Must be 'Project' or 'Batch'
+            Must be 'Project' or 'Workflow'
 
         """
 
-        if not ((dir_type == 'Project') or (dir_type == 'Batch')):
-            click.echo(f'dir_type must be "Project" or "Batch". Exiting.')
+        if not ((dir_type == 'Project') or (dir_type == 'Workflow')):
+            click.echo(f'dir_type must be "Project" or "Workflow". Exiting.')
             sys.exit()
 
         try:
@@ -131,6 +131,14 @@ class Datadir:
             click.echo('Nothing to clean.')
 
         else:
-            camus_utils.delete_directory(self.base)
+            
+            click.echo(f'You are about to delete the ``camus`` base directory at {self.base}. All data will be lost.')
+            answer = camus_log.ask_yes_no(f'Are you sure you want to proceed? [Y/n]\n')
+
+            if answer == 'Y':
+                camus_utils.delete_directory(self.base)
+
+            else:
+                click.echo('Will not delete the ``camus`` base directory.')
 
         self._check_existence()

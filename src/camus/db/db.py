@@ -73,8 +73,8 @@ class DB:
             if self._db_exists:
 
                 self._cur.execute('CREATE TABLE projects(proj_label, proj_directory, proj_config, proj_log, proj_description)')
-                self._cur.execute('CREATE TABLE batches(proj_label, batch_label, batch_directory, batch_config, batch_log, batch_description)')
-                self._cur.execute('CREATE TABLE calculations(proj_label, batch_label, calc_label, calc_directory, calc_log)')
+                self._cur.execute('CREATE TABLE workflows(proj_label, workflow_label, workflow_directory, workflow_config, workflow_log, workflow_description)')
+                self._cur.execute('CREATE TABLE calculations(proj_label, workflow_label, calc_label, calc_directory, calc_log)')
                 self._con.commit()
 
                 click.echo(f'camus database initialized at {self._db_path}')
@@ -143,52 +143,52 @@ class DB:
 
         click.echo(f'Project entry "{proj_label}" added to the camus database.')
 
-    def create_new_batch(self, proj_label, batch_label, batch_directory, batch_config, batch_log, batch_description=None):
+    def create_new_workflow(self, proj_label, workflow_label, workflow_directory, workflow_config, workflow_log, workflow_description=None):
         """
-        Updates the ``batches`` table with the new batch data.
+        Updates the ``workflows`` table with the new workflow data.
 
         Parameters
         ----------
         proj_label : str
-            Label of the project that the batch belongs to
-        batch_label : str
-            Label for the new batch
-        batch_directory : str
-            Path to the batch directory
-        batch_config : str
-            Path to the batch configuration file
-        batch_log : str
-            Path to the batch log file
-        batch_description : None
-            Optional batch description
+            Label of the project that the workflow belongs to
+        workflow_label : str
+            Label for the new workflow
+        workflow_directory : str
+            Path to the workflow directory
+        workflow_config : str
+            Path to the workflow configuration file
+        workflow_log : str
+            Path to the workflow log file
+        workflow_description : None
+            Optional workflow description
 
         """
 
         self._get_projects()
 
         if proj_label not in self._proj_labels:
-            click.echo(f'Cannot add {batch_label} entry to the camus database: "{proj_label}" project does not exist. Exiting.')
+            click.echo(f'Cannot add {workflow_label} entry to the camus database: "{proj_label}" project does not exist. Exiting.')
             sys.exit()
 
-        if not batch_description:
-            batch_description = ''
+        if not workflow_description:
+            workflow_description = ''
 
         data = ({
             'proj_label': proj_label,
-            'batch_label': batch_label,
-            'batch_directory': batch_directory,
-            'batch_config': batch_config,
-            'batch_log': batch_log,
-            'batch_description': batch_description
+            'workflow_label': workflow_label,
+            'workflow_directory': workflow_directory,
+            'workflow_config': workflow_config,
+            'workflow_log': workflow_log,
+            'workflow_description': workflow_description
                 })
 
         self._cur.execute("""
-        INSERT INTO batches VALUES(:proj_label, :batch_label, :batch_directory, :batch_config, :batch_log, :batch_description) 
+        INSERT INTO workflows VALUES(:proj_label, :workflow_label, :workflow_directory, :workflow_config, :workflow_log, :workflow_description) 
         """, data)
 
         self._con.commit()
 
-        click.echo(f'Batch entry "{batch_label}" added to the camus database.')
+        click.echo(f'Batch entry "{workflow_label}" added to the camus database.')
 
     def _get_projects(self):
         """
@@ -214,9 +214,9 @@ class DB:
             self._proj_logs.append(project_data[3])
             self._proj_descriptions.append(project_data[4])
 
-    def _get_batches(self, proj_label):
+    def _get_workflows(self, proj_label):
         """
-        Stores batches data of project ``proj_label`` to ``self._x``, where x = {batch_labels, batch_directories, batch_configs, batch_logs, batch_descriptions}.
+        Stores workflows data of project ``proj_label`` to ``self._x``, where x = {workflow_labels, workflow_directories, workflow_configs, workflow_logs, workflow_descriptions}.
 
         """
 
@@ -228,26 +228,26 @@ class DB:
 
         if proj_label in self._proj_labels:
 
-            batches_data = self._cur.execute("""
-            SELECT batch_label, batch_directory, batch_config, batch_log, batch_description FROM batches WHERE proj_label=:proj_label ORDER BY batch_label ASC
+            workflows_data = self._cur.execute("""
+            SELECT workflow_label, workflow_directory, workflow_config, workflow_log, workflow_description FROM workflows WHERE proj_label=:proj_label ORDER BY workflow_label ASC
             """, data).fetchall()
     
-            self._batch_labels = []
-            self._batch_directories = []
-            self._batch_configs = []
-            self._batch_logs = []
-            self._batch_descriptions = []
+            self._workflow_labels = []
+            self._workflow_directories = []
+            self._workflow_configs = []
+            self._workflow_logs = []
+            self._workflow_descriptions = []
     
-            for batch_data in batches_data:
+            for workflow_data in workflows_data:
     
-                self._batch_labels.append(batch_data[0])
-                self._batch_directories.append(batch_data[1])
-                self._batch_configs.append(batch_data[2])
-                self._batch_logs.append(batch_data[3])
-                self._batch_descriptions.append(batch_data[4])
+                self._workflow_labels.append(workflow_data[0])
+                self._workflow_directories.append(workflow_data[1])
+                self._workflow_configs.append(workflow_data[2])
+                self._workflow_logs.append(workflow_data[3])
+                self._workflow_descriptions.append(workflow_data[4])
 
         else:
-            click.echo(f'Cannot fetch {batch_label} entry from the camus database: "{proj_label}" project does not exist.')
+            click.echo(f'Cannot fetch {workflow_label} entry from the camus database: "{proj_label}" project does not exist.')
 
 
     def clean_database(self):

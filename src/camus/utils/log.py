@@ -180,7 +180,6 @@ def timestamp_message(message, datetime=None):
 
     return timestamp_message
 
-
 def ask_yes_no(question):
     """
     Forces the user to type 'Y' or 'n' and returns the answer.
@@ -216,6 +215,44 @@ def ask_yes_no(question):
             click.echo(dashes)
 
     return answer
+
+def ask_4_integer_list(lst):
+    """
+    Given a list ``lst`` of length N, force the user 
+    to type an integer in [1, ..., N] and return the answer. 
+
+    Parameters
+    ----------
+    lst : list
+        List of length N
+
+    Returns
+    -------
+    answer : int 
+        Integer in range [1, ..., N]
+
+    """
+
+    dashes = get_log_dashes()
+
+    input_ok = False
+
+    lst_len = len(lst)
+    accept_list = [str(i) for i in range(1, lst_len + 1)]
+
+    while(input_ok == False):
+
+        answer = input(f'Please enter an integer in range [1 - {lst_len}].\n')
+        click.echo(dashes)
+
+        try:
+            assert answer in accept_list
+            input_ok = True
+
+        except AssertionError:
+            click.echo(f'Invalid integer.')
+
+    return int(answer)
 
 def get_log_dashes():
     """
@@ -262,7 +299,7 @@ def get_logo():
 
     Returns
     -------
-    str
+    logo : str
         The ``camus`` logo
 
     """

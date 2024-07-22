@@ -2,8 +2,8 @@ import click
 
 from camus.db.datadir import Datadir
 from camus.db.db import DB
-from camus.db.project import Project
-from camus.db.batch import Batch
+from camus.db.project_manager import ProjectManager
+from camus.db.workflow_manager import WorkflowManager
 from camus.cfg.config_camus import ConfigCamus
 
 @click.command('all_data', help='Delete the camus data directory.')
@@ -50,22 +50,22 @@ def clean_project(project_label):
     project = Project()
     project.delete_project(label=project_label)
 
-@click.command('batch', help="""Delete the batch with the given batch label.
+@click.command('wf', help="""Delete the workflow with the given workflow label.
 
-        Example usage: camus clean batch my_batch_label
+        Example usage: camus clean wf my_workflow_label
 
-        To view the list of all batches in the active project, use:
+        To view the list of all workflows in the active project, use:
 
-        camus batch list
+        camus wf list
         """)
-@click.argument('batch_label')
-def clean_batch(batch_label):
+@click.argument('workflow_label')
+def clean_workflow(workflow_label):
     """
-    Deletes the batch with the given ``batch_label``.
+    Deletes the workflow with the given ``workflow_label``.
     """
     
-    batch = Batch()
-    batch.delete_batch(label=batch_label)
+    workflow = WorkflowManager()
+    workflow.delete_workflow(label=workflow_label)
 
 @click.group()
 def clean_cli(name='clean', help='Tools for cleaning the ``camus`` data directory'):
@@ -78,7 +78,7 @@ clean_cli.add_command(clean_all_data)
 clean_cli.add_command(clean_config)
 clean_cli.add_command(clean_db)
 clean_cli.add_command(clean_project)
-clean_cli.add_command(clean_batch)
+clean_cli.add_command(clean_workflow)
 
 def main():
     clean_cli()

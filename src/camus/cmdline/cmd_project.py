@@ -1,6 +1,6 @@
 import click
 
-from camus.db.project import Project
+from camus.db.project_manager import ProjectManager
 
 @click.command('new', help="""Create a new project
 
@@ -21,7 +21,7 @@ def new_project(label, description, cfgfile):
 
     """
 
-    proj = Project()
+    proj = ProjectManager()
     proj.create_new_project(label=label, description=description, config_file=cfgfile)
 
 @click.command('list', help="""List all projects
@@ -37,7 +37,7 @@ def list_all_projects():
 
     """
 
-    proj = Project()
+    proj = ProjectManager()
     proj.list_all_projects()
 
 @click.command('switch', help="""Change the active project using a given project label
@@ -57,14 +57,14 @@ def switch_active_project(project_label):
 
     """
 
-    proj = Project()
+    proj = ProjectManager()
     proj.switch_active_project(label=project_label)
 
-@click.command('show', help="""Print info on currently active project
+@click.command('status', help="""Print info on currently active project
 
         Example usage:
 
-        camus project show
+        camus project status
 
         """)
 def print_active_project():
@@ -73,7 +73,7 @@ def print_active_project():
 
     """
 
-    proj = Project()
+    proj = ProjectManager()
     proj._print_active_project()
 
 @click.command('log', help="""Print the log of the currently active project
@@ -89,14 +89,14 @@ def print_active_log():
 
     """
 
-    proj = Project(load_active=True)
+    proj = ProjectManager(load_active=True)
     proj._print_log()
 
-@click.command('show', help="""Print the config of the currently active project
+@click.command('print', help="""Print the config of the currently active project
 
         Example usage:
 
-        camus project config show
+        camus project config print
 
         """)
 def print_active_config():
@@ -105,7 +105,7 @@ def print_active_config():
 
     """
 
-    proj = Project()
+    proj = ProjectManager()
     proj._print_active_config()
 
 @click.command('edit', help="""Edit the the active project config file
@@ -119,13 +119,13 @@ def print_active_config():
         The new value should be given after the option.
 
         NOTE: if you want to pass a string which includes a hyphen as a new value,
-        you should prepend the value with "--", e.g.:
+        you should prepend the string with "--", e.g.:
 
         camus project config edit lammps_run_command -- mpirun -np 2
 
         To see the current config file, use:
 
-        camus project config show
+        camus project config print
 
         """)
 @click.argument('option')
@@ -138,7 +138,7 @@ def edit_config(option, value):
 
     value_str = ' '.join(value)
 
-    proj = Project()
+    proj = ProjectManager()
     proj._edit_active_config_by_subsection(subsection=option, value=value_str)
 
 @click.group()
@@ -148,7 +148,7 @@ def config(name='config', help="""Print/edit the config file of the currently ac
 
         Example usage:
 
-        camus project config show
+        camus project config print
 
         camus project config edit lammps_exe /path/to/lmp/exe
         """
