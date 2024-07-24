@@ -47,7 +47,7 @@ def clean_project(project_label):
     Deletes the project with the given ``project_label``.
     """
     
-    project = Project()
+    project = ProjectManager()
     project.delete_project(label=project_label)
 
 @click.command('wf', help="""Delete the workflow with the given workflow label.

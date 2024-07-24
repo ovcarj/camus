@@ -1,7 +1,7 @@
 import abc
 
 from camus.workflows.workflow import Workflow
-from camus.phases.phase_prep_dirs_structs import PhasePrepDirsStructs
+#from camus.phases.phase_prep_dirs_structs import PhasePrepDirsStructs
 
 class WorkflowEnFor(Workflow,
         workflow_tag='energy_force', 
@@ -33,7 +33,7 @@ class WorkflowEnFor(Workflow,
 
         """
 
-        phases = [PhasePrepDirsStructs]
+        phases = []
 
         return phases
 

@@ -188,7 +188,7 @@ class DB:
 
         self._con.commit()
 
-        click.echo(f'Batch entry "{workflow_label}" added to the camus database.')
+        click.echo(f'Workflow entry "{workflow_label}" added to the camus database.')
 
     def _get_projects(self):
         """

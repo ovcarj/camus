@@ -13,7 +13,7 @@ class Workflow(abc.ABC):
 
     def __init_subclass__(cls, workflow_tag, workflow_description):
         """
-        Ensure that every Workflow subclass defines required class attributes correctly.
+        Ensures that every Workflow subclass defines required class attributes correctly.
 
         Parameters
         ----------
@@ -37,7 +37,7 @@ class Workflow(abc.ABC):
     @classmethod
     def _define_general_wf_options(cls):
         """
-        Define general configuration options common to all workflows as a list
+        Defines general configuration options common to all workflows as a list
         of _GlobalWfConfigOption instances.
         
         """
